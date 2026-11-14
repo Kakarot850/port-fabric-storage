@@ -1,0 +1,53 @@
+PRIVATE PERSONAL-USE NOTICE
+Sophisticated Storage - unofficial Fabric port for Minecraft 26.1.2
+
+This repository is a private, personal, non-commercial port of Sophisticated
+Storage to the Fabric mod loader. It is not an official release, and it is not
+affiliated with or endorsed by P3pp3rF1y.
+
+1. Ownership
+
+   Sophisticated Storage, including its source code, assets and other project
+   files, is Copyright (c) 2025 P3pp3rF1y and is licensed under P3pp3rF1y's
+   "All Rights Reserved License" (ARR):
+
+     https://github.com/P3pp3rF1y/SophisticatedStorage  (LICENSE.md, branch 26.1)
+     local copy: ../ref-neoforge-storage/LICENSE.md
+
+   This port is a modification of that work. All rights remain with
+   P3pp3rF1y. Nothing in this repository grants any right beyond those in the
+   original license, and where this notice and the original license differ,
+   the original license governs.
+
+2. Basis for this port
+
+   Section 3 of the original license allows modification "only for personal,
+   non-commercial use". This port exists solely on that basis.
+
+3. Restrictions (from the original license)
+
+   - Do not copy, distribute, rehost, sublicense or share this port, in source
+     or binary form, modified or unmodified (Section 2).
+   - Do not share, distribute or publish these modifications (Section 3).
+   - Do not use this port, in whole or in part, for any commercial purpose
+     (Section 4).
+   - Publishing this port, or any fork, derivative or adaptation of it,
+     requires explicit permission from P3pp3rF1y (Section 5).
+
+4. Translations
+
+   Under Section 1 of the original license, translations carry no license
+   restrictions.
+
+5. Third-party reference material
+
+   Salandora's Fabric port of Sophisticated Storage for Minecraft 1.21.1, licensed
+   under the GNU General Public License v3.0, is used as an architectural
+   reference. Any code adapted from that project remains subject to its
+   license.
+
+6. No warranty
+
+   This port is provided "as is", without warranty of any kind, express or
+   implied. Use it at your own risk (see also Section 7 of the original
+   license).

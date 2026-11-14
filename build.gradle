@@ -1,0 +1,123 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'java-library'
+	id 'maven-publish'
+}
+
+version = "${project.minecraft_version}-${project.mod_version}"
+group = project.mod_group_id
+
+base {
+	archivesName = project.mod_id
+}
+
+repositories {
+	mavenLocal()
+	mavenCentral()
+	maven {
+		// Forge Config API Port
+		name = 'Fuzs Mod Resources'
+		url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/'
+		content {
+			includeGroup 'fuzs.forgeconfigapiport'
+		}
+	}
+}
+
+loom {
+	// Official namespace (MC 26.1 ships unobfuscated): file header must be `accessWidener v2 official`.
+	accessWidenerPath = file("src/main/resources/${project.mod_id}.accesswidener")
+
+	mods {
+		"${project.mod_id}" {
+			sourceSet sourceSets.main
+		}
+	}
+
+	runs {
+		configureEach {
+			runDir "run"
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	implementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${project.forge_config_api_port_version}"
+	implementation "net.p3pp3rf1y:sophisticatedcore:${project.sc_version}"
+
+	// javax.annotation.* (ParametersAreNonnullByDefault, Nullable) used throughout ref-neoforge-storage.
+	compileOnly "com.google.code.findbugs:jsr305:${project.jsr305_version}"
+}
+
+processResources {
+	def replaceProperties = [
+			mod_id                       : project.mod_id,
+			mod_name                     : project.mod_name,
+			mod_license                  : project.mod_license,
+			mod_version                  : "${project.mod_version}+${project.minecraft_version}".toString(),
+			mod_authors_elements         : project.mod_authors.split(',').collect { it.trim() }.join('", "'),
+			mod_description              : project.mod_description,
+			mod_credits                  : project.mod_credits,
+			mod_logo_file                : project.mod_logo_file,
+			mod_display_url              : project.mod_display_url,
+			mod_issue_tracker_url        : project.mod_issue_tracker_url,
+			mod_sources_url              : project.mod_sources_url,
+			minecraft_version_range      : project.minecraft_version_range,
+			loader_version               : project.loader_version,
+			fabric_api_version           : project.fabric_api_version,
+			forge_config_api_port_version: project.forge_config_api_port_version,
+			sc_mod_version               : project.sc_mod_version
+	]
+	inputs.properties replaceProperties
+
+	filesMatching("fabric.mod.json") {
+		expand replaceProperties
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.encoding = 'UTF-8'
+	it.options.release = 25
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	def modId = project.mod_id
+	inputs.property "modId", modId
+
+	from("LICENSE") {
+		rename { "${it}_${modId}" }
+	}
+
+	manifest {
+		attributes([
+				'Specification-Title'   : project.mod_id,
+				'Specification-Vendor'  : 'p3pp3rf1y',
+				'Specification-Version' : '1',
+				'Implementation-Title'  : project.name,
+				'Implementation-Version': project.version,
+				'Implementation-Vendor' : 'p3pp3rf1y'
+		])
+	}
+}
+
+publishing {
+	publications {
+		register("mavenJava", MavenPublication) {
+			artifactId = project.mod_id
+			from components.java
+		}
+	}
+	repositories {
+	}
+}

@@ -1,0 +1,36 @@
+accessWidener v2 official
+
+# Ported from ref-neoforge-storage (26.1 branch) META-INF/accesstransformer.cfg.
+# Every entry verified against port-fabric-core/build/mc-sources/ and 26.1.2 merged jar with javap.
+#
+# Inherited transitively from sophisticatedcore.accesswidener (transitive-*):
+#   ShapelessRecipe#result / ingredients, ShapedRecipe#result, Slot#x / y
+#
+# Dropped vs. NeoForge AT (do not exist, already public, or signature changed & unused in 26.1.2):
+#   ItemStackRenderState$LayerRenderState#transform     -> removed / replaced by localTransform (unused)
+#   ItemStackRenderState$LayerRenderState#renderType    -> removed in 26.1.2 (unused)
+#   BakedQuad#direction                                 -> net/minecraft/client/resources/model/geometry/BakedQuad is now a record with public direction()
+#   FaceBakery#calculateFacing([I)                      -> moved to net/minecraft/client/resources/model/cuboid/FaceBakery with ([Lorg/joml/Vector3fc;) (unused)
+#   ContainerOpenersCounter#getPlayersWithContainerOpen -> renamed to public getEntitiesWithContainerOpen
+
+# --- ItemStackRenderState (client) ---
+accessible field net/minecraft/client/renderer/item/ItemStackRenderState layers [Lnet/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState;
+accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState specialRenderer Lnet/minecraft/client/renderer/special/SpecialModelRenderer;
+accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState tintLayers Lit/unimi/dsi/fastutil/ints/IntList;
+accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState itemTransform Lnet/minecraft/client/resources/model/cuboid/ItemTransform;
+
+# --- Client / rendering ---
+accessible field net/minecraft/client/multiplayer/MultiPlayerGameMode destroyDelay I
+accessible field net/minecraft/client/model/monster/shulker/ShulkerModel lid Lnet/minecraft/client/model/geom/ModelPart;
+
+# --- Container openers / vanilla block entities ---
+accessible field net/minecraft/world/level/block/entity/ContainerOpenersCounter openCount I
+accessible field net/minecraft/world/level/block/entity/ContainerOpenersCounter maxInteractionRange D
+accessible method net/minecraft/world/level/block/entity/ContainerOpenersCounter scheduleRecheck (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;)V
+accessible field net/minecraft/world/level/block/entity/ChestBlockEntity openersCounter Lnet/minecraft/world/level/block/entity/ContainerOpenersCounter;
+accessible field net/minecraft/world/level/block/entity/ShulkerBoxBlockEntity openCount I
+accessible field net/minecraft/world/level/block/entity/BarrelBlockEntity openersCounter Lnet/minecraft/world/level/block/entity/ContainerOpenersCounter;
+
+# --- WoodType / CauldronInteraction ---
+accessible field net/minecraft/world/level/block/state/properties/WoodType TYPES Ljava/util/Map;
+accessible method net/minecraft/core/cauldron/CauldronInteraction$Dispatcher put (Lnet/minecraft/world/item/Item;Lnet/minecraft/core/cauldron/CauldronInteraction;)V
