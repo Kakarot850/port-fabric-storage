@@ -23,8 +23,8 @@ public abstract class MouseHandlerMixin {
 	private void sophisticatedStorage_onScroll(long handle, double xoffset, double yoffset, CallbackInfo ci) {
 		if (handle == this.minecraft.getWindow().handle()
 				&& yoffset != 0.0D
-				&& this.minecraft.getOverlay() == null
-				&& this.minecraft.screen == null
+				&& this.minecraft.gui.overlay() == null
+				&& this.minecraft.gui.screen() == null
 				&& ClientEventHandler.onMouseScrolled(yoffset)) {
 			ci.cancel();
 		}

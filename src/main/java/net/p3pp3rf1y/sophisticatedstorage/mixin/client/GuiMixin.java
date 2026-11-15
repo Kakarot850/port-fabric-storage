@@ -1,7 +1,7 @@
 package net.p3pp3rf1y.sophisticatedstorage.mixin.client;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.Hud;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Gui.class)
+@Mixin(Hud.class)
 public abstract class GuiMixin {
 	@Shadow
 	@Final
@@ -35,7 +35,7 @@ public abstract class GuiMixin {
 			method = "extractSelectedItemName(Lnet/minecraft/client/gui/GuiGraphicsExtractor;)V",
 			at = @At(
 					value = "INVOKE",
-					target = "Lnet/minecraft/client/gui/Gui;getFont()Lnet/minecraft/client/gui/Font;",
+					target = "Lnet/minecraft/client/gui/Hud;getFont()Lnet/minecraft/client/gui/Font;",
 					ordinal = 0
 			),
 			ordinal = 0

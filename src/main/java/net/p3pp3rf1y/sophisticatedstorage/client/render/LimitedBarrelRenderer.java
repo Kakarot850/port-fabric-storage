@@ -3,7 +3,6 @@ package net.p3pp3rf1y.sophisticatedstorage.client.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
@@ -19,6 +18,7 @@ import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.p3pp3rf1y.sophisticatedcore.renderdata.RenderData;
@@ -35,13 +35,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
 
-import static net.minecraft.client.Minecraft.UNIFORM_FONT;
-
 public class LimitedBarrelRenderer extends BarrelRendererBase<LimitedBarrelBlockEntity, LimitedBarrelRenderer.LimitedBarrelRenderState> {
 	private static final Identifier FILL_INDICATORS_TEXTURE = SophisticatedStorage.getIdentifier("block/fill_indicators");
 	private static final float MULTIPLE_ITEMS_FONT_SCALE = 1 / 96f;
 	private static final float SINGLE_ITEM_FONT_SCALE = 1 / 48f;
-	public static final Style INFINITE_COUNT_DISPLAY_STYLE = Style.EMPTY.withFont(new FontDescription.Resource(UNIFORM_FONT));
+	public static final Style INFINITE_COUNT_DISPLAY_STYLE = Style.EMPTY.withFont(new FontDescription.Resource(Identifier.withDefaultNamespace("uniform")));
 	private static final Style COUNT_DISPLAY_STYLE = INFINITE_COUNT_DISPLAY_STYLE.withBold(true);
 	private final DisplayItemRenderer displayItemRenderer = new DisplayItemRenderer(0.5, new Vec3(0, 0, -1 / 16D));
 	private final DisplayItemRenderer flatDisplayItemRenderer = new DisplayItemRenderer(0.5, Vec3.ZERO);
@@ -220,7 +218,7 @@ public class LimitedBarrelRenderer extends BarrelRendererBase<LimitedBarrelBlock
 		renderState.verticalFacing = blockState.getValue(LimitedBarrelBlock.VERTICAL_FACING);
 
 		if (blockEntity.getLevel() != null && blockEntity.shouldUseLightInFrontForFrontRender()) {
-			renderState.lightCoords = LevelRenderer.getLightCoords(blockEntity.getLevel(), blockEntity.getBlockPos()
+			renderState.lightCoords = LightCoordsUtil.getLightCoords(blockEntity.getLevel(), blockEntity.getBlockPos()
 					.relative(renderState.verticalFacing != VerticalFacing.NO ? renderState.verticalFacing.getDirection() : renderState.horizontalFacing));
 		}
 

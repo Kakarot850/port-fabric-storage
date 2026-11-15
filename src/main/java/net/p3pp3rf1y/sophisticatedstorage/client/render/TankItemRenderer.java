@@ -78,8 +78,8 @@ public class TankItemRenderer implements SpecialModelRenderer<TankItemRenderer.T
 		List<BakedQuad> opaque = new ArrayList<>();
 		List<BakedQuad> translucent = new ArrayList<>();
 		addQuads(FabricModelHelper.collectModelQuads(model, Minecraft.getInstance().level, BlockPos.ZERO, blockState, RandomSource.create(42)), opaque, translucent);
-		submitQuads(opaque, pose, collector, Sheets.cutoutBlockSheet(), light, overlay);
-		submitQuads(translucent, pose, collector, Sheets.translucentBlockSheet(), light, overlay);
+		submitQuads(opaque, pose, collector, Sheets.cutoutBlockItemSheet(), light, overlay);
+		submitQuads(translucent, pose, collector, Sheets.translucentBlockItemSheet(), light, overlay);
 	}
 
 	private static void addQuads(List<BakedQuad> quads, List<BakedQuad> opaque, List<BakedQuad> translucent) {

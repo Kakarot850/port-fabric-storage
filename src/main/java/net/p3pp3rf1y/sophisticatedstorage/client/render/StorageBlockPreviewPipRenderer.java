@@ -6,11 +6,8 @@ import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.render.pip.PictureInPictureRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.SubmitNodeStorage;
-import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
@@ -32,17 +29,13 @@ public class StorageBlockPreviewPipRenderer extends PictureInPictureRenderer<Sto
 	@Nullable
 	private GpuBuffer previewLightingBuffer;
 
-	public StorageBlockPreviewPipRenderer(MultiBufferSource.BufferSource bufferSource) {
-		super(bufferSource);
-	}
-
 	@Override
 	public Class<StorageBlockPreviewRenderState> getRenderStateClass() {
 		return StorageBlockPreviewRenderState.class;
 	}
 
 	@Override
-	protected void renderToTexture(StorageBlockPreviewRenderState renderState, PoseStack poseStack) {
+	protected void renderToTexture(StorageBlockPreviewRenderState renderState, PoseStack poseStack, SubmitNodeCollector submitNodeCollector) {
 		setupPreviewLighting();
 		poseStack.mulPose(Axis.XN.rotationDegrees(-renderState.xAxisRotation()));
 		poseStack.mulPose(Axis.YP.rotationDegrees(-renderState.yAxisRotation()));
@@ -54,17 +47,14 @@ public class StorageBlockPreviewPipRenderer extends PictureInPictureRenderer<Sto
 			poseStack.translate(-otherStorageOffset.getX() / 2D, 0, -otherStorageOffset.getZ() / 2D);
 		}
 
-		FeatureRenderDispatcher featureRenderDispatcher = Minecraft.getInstance().gameRenderer.getFeatureRenderDispatcher();
-		SubmitNodeStorage submitNodeStorage = featureRenderDispatcher.getSubmitNodeStorage();
-		StorageBlockPreviewRenderer.submitStorageBlock(renderState.storageBlockEntity(), renderState.partialTicks(), poseStack, submitNodeStorage, 15728880);
+		StorageBlockPreviewRenderer.submitStorageBlock(renderState.storageBlockEntity(), renderState.partialTicks(), poseStack, submitNodeCollector, 15728880);
 		if (renderState.otherStorageBlockEntity() != null && otherStorageOffset != null) {
 			poseStack.pushPose();
 			poseStack.translate(otherStorageOffset.getX(), 0, otherStorageOffset.getZ());
-			StorageBlockPreviewRenderer.submitStorageBlock(renderState.otherStorageBlockEntity(), renderState.partialTicks(), poseStack, submitNodeStorage,
+			StorageBlockPreviewRenderer.submitStorageBlock(renderState.otherStorageBlockEntity(), renderState.partialTicks(), poseStack, submitNodeCollector,
 					15728880);
 			poseStack.popPose();
 		}
-		featureRenderDispatcher.renderAllFeatures();
 	}
 
 	@Override

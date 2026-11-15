@@ -45,8 +45,8 @@ public class PaintbrushOverlay {
 
 	public static final HudElement HUD_PAINTBRUSH_INFO = (guiGraphics, deltaTracker) -> {
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.screen != null) {
-			if (!mc.screen.isPauseScreen()) {
+		if (mc.gui.screen() != null) {
+			if (!mc.gui.screen().isPauseScreen()) {
 				lastPosCached = null;
 				lastPaintbrushCached = null;
 				lastCacheUpdateGameTime = -CACHE_REFRESH_INTERVAL_TICKS;

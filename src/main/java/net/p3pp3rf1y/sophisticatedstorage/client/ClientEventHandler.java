@@ -20,7 +20,6 @@ import net.fabricmc.fabric.api.resource.v1.reloader.ResourceReloaderKeys;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.ShapeRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.client.renderer.item.ItemModels;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -114,8 +113,8 @@ public class ClientEventHandler {
 	}
 
 	private static void registerPictureInPictureRenderers() {
-		PictureInPictureRendererRegistry.register(ctx -> new DecorationTablePreviewRenderer(ctx.bufferSource()));
-		PictureInPictureRendererRegistry.register(ctx -> new StorageBlockPreviewPipRenderer(ctx.bufferSource()));
+		PictureInPictureRendererRegistry.register(ctx -> new DecorationTablePreviewRenderer());
+		PictureInPictureRendererRegistry.register(ctx -> new StorageBlockPreviewPipRenderer());
 	}
 
 	private static void registerBlockStateModels() {
@@ -134,7 +133,7 @@ public class ClientEventHandler {
 	private static boolean onBeforeBlockOutline(LevelRenderContext context, BlockOutlineRenderState outlineRenderState) {
 		Minecraft minecraft = Minecraft.getInstance();
 		LocalPlayer player = minecraft.player;
-		if (player == null || minecraft.screen != null || !(minecraft.hitResult instanceof BlockHitResult hitresult)) {
+		if (player == null || minecraft.gui.screen() != null || !(minecraft.hitResult instanceof BlockHitResult hitresult)) {
 			return true;
 		}
 
@@ -146,11 +145,12 @@ public class ClientEventHandler {
 			Level level = player.level();
 			BlockState blockState = level.getBlockState(otherPos);
 			if (!blockState.isAir() && level.getWorldBorder().isWithinBounds(otherPos)) {
-				VertexConsumer vertexConsumer = context.bufferSource().getBuffer(RenderTypes.lines());
 				Vec3 cameraPos = context.levelState().cameraRenderState.pos;
-				ShapeRenderer.renderShape(context.poseStack(), vertexConsumer, blockState.getShape(level, otherPos, collisionContext),
-						otherPos.getX() - cameraPos.x, otherPos.getY() - cameraPos.y, otherPos.getZ() - cameraPos.z,
-						ARGB.colorFromFloat(0.4F, 0, 0, 0), minecraft.getWindow().getAppropriateLineWidth());
+				context.poseStack().pushPose();
+				context.poseStack().translate(otherPos.getX() - cameraPos.x, otherPos.getY() - cameraPos.y, otherPos.getZ() - cameraPos.z);
+				context.submitNodeCollector().submitShapeOutline(context.poseStack(), blockState.getShape(level, otherPos, collisionContext), RenderTypes.lines(),
+						ARGB.colorFromFloat(0.4F, 0, 0, 0), minecraft.getWindow().getAppropriateLineWidth(), outlineRenderState.isTranslucent());
+				context.poseStack().popPose();
 			}
 		}
 
@@ -168,7 +168,7 @@ public class ClientEventHandler {
 					Vec3 cameraPos = context.levelState().cameraRenderState.pos;
 					context.poseStack().pushPose();
 					context.poseStack().translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
-					BlockHighlightRenderHelper.renderThickEdges(context.poseStack(), context.bufferSource(), color,
+					BlockHighlightRenderHelper.submitThickEdges(context.submitNodeCollector(), context.poseStack(), color,
 							VoxelOutliner.linesFromVoxelShapeSimplified(blockState.getShape(level, pos, collisionContext), pos), pos);
 					context.poseStack().popPose();
 					return false;
@@ -181,7 +181,7 @@ public class ClientEventHandler {
 
 	public static boolean onMouseScrolled(double scrollDeltaY) {
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.screen != null) {
+		if (mc.gui.screen() != null) {
 			return false;
 		}
 		LocalPlayer player = mc.player;
