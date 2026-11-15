@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.p3pp3rf1y.sophisticatedcore.fabric.capabilities.Capabilities;
+import net.p3pp3rf1y.sophisticatedstorage.capabilities.BlockCapabilityCache;
 import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.ResourceHandler;
 import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.item.ItemResource;
 import net.p3pp3rf1y.sophisticatedcore.api.IStorageFluidHandler;
@@ -42,9 +43,8 @@ public class StorageIOBlockEntity extends BlockEntity implements IControllerBoun
 	private boolean overlayHidden = false;
 	private boolean chunkBeingUnloaded = false;
 
-	// TODO(port): Slice 4 - BlockCapabilityCache<ResourceHandler<ItemResource>, Direction> controllerItemHandlerCache;
 	@Nullable
-	private Object controllerItemHandlerCache;
+	private BlockCapabilityCache<ResourceHandler<ItemResource>, Direction> controllerItemHandlerCache;
 
 	protected StorageIOBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
@@ -234,7 +234,7 @@ public class StorageIOBlockEntity extends BlockEntity implements IControllerBoun
 
 	protected void invalidateItemHandlerCache() {
 		controllerItemHandlerCache = null;
-		// TODO(port): Slice 4 - invalidateCapabilities();
+		sophisticatedStorage_invalidateCapabilities();
 	}
 
 	@Nullable
@@ -244,9 +244,17 @@ public class StorageIOBlockEntity extends BlockEntity implements IControllerBoun
 			return null;
 		}
 
-		// TODO(port): Slice 4 - restore BlockCapabilityCache
-		return WorldHelper.getBlockEntity(getLevel(), getControllerPos().get(), ControllerBlockEntity.class)
-				.map(ControllerBlockEntity::getExternalItemResourceHandler).orElse(null);
+		if (controllerItemHandlerCache == null && level instanceof ServerLevel serverLevel) {
+			controllerItemHandlerCache = BlockCapabilityCache.create(Capabilities.Item.BLOCK, serverLevel, getControllerPos().get(), side, () -> !isRemoved(),
+					this::invalidateItemHandlerCache);
+		}
+
+		if (controllerItemHandlerCache != null) {
+			return controllerItemHandlerCache.getCapability();
+		} else {
+			return WorldHelper.getBlockEntity(getLevel(), getControllerPos().get(), ControllerBlockEntity.class)
+					.map(ControllerBlockEntity::getExternalItemResourceHandler).orElse(null);
+		}
 	}
 
 	@Nullable

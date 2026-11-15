@@ -54,7 +54,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class BarrelBlock extends WoodStorageBlockBase {
+public class BarrelBlock extends WoodStorageBlockBase implements ICustomParticleBlock {
 	public static final EnumProperty<Direction> FACING = BlockStateProperties.FACING;
 	public static final BooleanProperty OPEN = BlockStateProperties.OPEN;
 	public static final BooleanProperty FLAT_TOP = BooleanProperty.create("flat_top");
@@ -90,13 +90,14 @@ public class BarrelBlock extends WoodStorageBlockBase {
 		return state.getValue(OPAQUE);
 	}
 
-	// TODO(port): Slice 4 - hook addLandingEffects / addRunningEffects via Mixin if needed
+	@Override
 	public boolean addLandingEffects(BlockState state1, ServerLevel level, BlockPos pos, BlockState state2, LivingEntity entity, int numberOfParticles) {
 		level.sendParticles(new CustomTintTerrainParticleData(state1, pos), entity.getX(), entity.getY(), entity.getZ(), numberOfParticles, 0.0D, 0.0D, 0.0D,
 				0.15D);
 		return true;
 	}
 
+	@Override
 	public boolean addRunningEffects(BlockState state, Level level, BlockPos pos, Entity entity) {
 		Vec3 vec3 = entity.getDeltaMovement();
 		level.addParticle(new CustomTintTerrainParticleData(state, pos), entity.getX() + (level.getRandom().nextDouble() - 0.5D) * entity.getBbWidth(),

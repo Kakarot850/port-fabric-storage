@@ -78,7 +78,7 @@ public abstract class WoodStorageBlockEntity extends StorageBlockEntity {
 
 	public void setPacked(boolean packed) {
 		if (this.packed != packed) {
-			// TODO(port): Slice 4 - invalidateCapabilities();
+			sophisticatedStorage_invalidateCapabilities();
 		}
 		this.packed = packed;
 		if (packed) {

@@ -235,7 +235,7 @@ public abstract class StorageBlockEntity extends BlockEntity
 	}
 
 	private void invalidateCapabilitiesAndControllerCache() {
-		// TODO(port): Slice 4 - invalidateCapabilities();
+		sophisticatedStorage_invalidateCapabilities();
 		if (level != null) {
 			onInventoryInputOutputHandlerRefresh();
 		}

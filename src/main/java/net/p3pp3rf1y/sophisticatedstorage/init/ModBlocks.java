@@ -28,6 +28,8 @@ import net.minecraft.world.level.block.LayeredCauldronBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.p3pp3rf1y.sophisticatedcore.fabric.capabilities.Capabilities;
+import net.p3pp3rf1y.sophisticatedcore.fabric.capabilities.RegisterCapabilitiesEvent;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.WoodType;
 import net.p3pp3rf1y.sophisticatedcore.fabric.registries.DeferredHolder;
@@ -459,11 +461,10 @@ public class ModBlocks {
 		MENU_TYPES.register();
 		RECIPE_SERIALIZERS.register();
 		CustomIngredientSerializer.register(BASE_TIER_WOODEN_STORAGE_INGREDIENT_TYPE);
-		// TODO(port): Slice 4 - registerCapabilities
+		registerCapabilities(new RegisterCapabilitiesEvent());
 		// TODO(port): Slice 5 - if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) { ModBlocksClient.init(); }
 	}
 
-	/* TODO(port): Slice 4 - register capabilities on ItemStorage.SIDED / FluidStorage.SIDED / Capabilities
 	private static void registerCapabilities(RegisterCapabilitiesEvent event) {
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, CHEST_BLOCK_ENTITY_TYPE.get(), StorageBlockEntity::getExternalFluidHandler);
 		event.registerBlockEntity(Capabilities.Fluid.BLOCK, SHULKER_BOX_BLOCK_ENTITY_TYPE.get(), StorageBlockEntity::getExternalFluidHandler);
@@ -488,7 +489,6 @@ public class ModBlocks {
 		event.registerBlockEntity(Capabilities.Item.BLOCK, STORAGE_INPUT_BLOCK_ENTITY_TYPE.get(), StorageInputBlockEntity::getExternalItemResourceHandler);
 		event.registerBlockEntity(Capabilities.Item.BLOCK, STORAGE_OUTPUT_BLOCK_ENTITY_TYPE.get(), StorageOutputBlockEntity::getExternalItemResourceHandler);
 	}
-	*/
 
 	public static void registerDispenseBehavior() {
 		ShulkerBoxDispenseBehavior behavior = new ShulkerBoxDispenseBehavior();

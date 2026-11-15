@@ -9,7 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-import java.util.function.BooleanSupplier;
+import net.p3pp3rf1y.sophisticatedstorage.capabilities.BlockCapabilityCache;
 import net.p3pp3rf1y.sophisticatedcore.fabric.capabilities.Capabilities;
 import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.ResourceHandler;
 import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.item.ItemResource;
@@ -201,8 +201,8 @@ public class HopperUpgradeWrapper extends UpgradeWrapperBase<HopperUpgradeWrappe
 					});
 			BlockPos targetPos = controllerPos.orElse(offsetPos);
 
-			// TODO(port): Slice 4 - BlockCapabilityCache
-			itemHandlerTargets.add(new ItemHandlerTarget(serverLevel, targetPos, direction.getOpposite(), validityCheck, controllerPos.isPresent()));
+			itemHandlerTargets.add(new ItemHandlerTarget(BlockCapabilityCache.create(Capabilities.Item.BLOCK, serverLevel, targetPos, direction.getOpposite(),
+					validityCheck, () -> handlerCache.remove(direction)), controllerPos.isPresent()));
 		});
 		return new ItemHandlerHolder(itemHandlerTargets, refreshOnEveryNeighborChange.get());
 	}
@@ -318,27 +318,19 @@ public class HopperUpgradeWrapper extends UpgradeWrapperBase<HopperUpgradeWrappe
 	}
 
 	private static class ItemHandlerTarget {
-		private final ServerLevel serverLevel;
-		private final BlockPos targetPos;
-		private final Direction side;
-		private final BooleanSupplier validityCheck;
+		private final BlockCapabilityCache<ResourceHandler<ItemResource>, Direction> handlerCache;
 		private final boolean blockExtraction;
 		@Nullable
 		private ResourceHandler<ItemResource> noExtractHandler;
 
-		private ItemHandlerTarget(ServerLevel serverLevel, BlockPos targetPos, Direction side, BooleanSupplier validityCheck, boolean blockExtraction) {
-			this.serverLevel = serverLevel;
-			this.targetPos = targetPos;
-			this.side = side;
-			this.validityCheck = validityCheck;
+		private ItemHandlerTarget(BlockCapabilityCache<ResourceHandler<ItemResource>, Direction> handlerCache, boolean blockExtraction) {
+			this.handlerCache = handlerCache;
 			this.blockExtraction = blockExtraction;
 		}
 
 		@Nullable
 		private ResourceHandler<ItemResource> getCapability() {
-			ResourceHandler<ItemResource> itemHandler = validityCheck.getAsBoolean()
-					? serverLevel.sophisticatedCore_getCapability(Capabilities.Item.BLOCK, targetPos, side)
-					: null;
+			ResourceHandler<ItemResource> itemHandler = handlerCache.getCapability();
 			if (itemHandler == null) {
 				return null;
 			}

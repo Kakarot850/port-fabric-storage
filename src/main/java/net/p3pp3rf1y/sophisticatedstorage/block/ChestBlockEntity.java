@@ -101,7 +101,7 @@ public class ChestBlockEntity extends WoodStorageBlockEntity {
 		removeFromController();
 		setNotLinked();
 		tryToAddToController();
-		// TODO(port): Slice 4 - invalidateCapabilities();
+		sophisticatedStorage_invalidateCapabilities();
 	}
 
 	public ChestLidController getChestLidController() {
@@ -416,7 +416,7 @@ public class ChestBlockEntity extends WoodStorageBlockEntity {
 		mainBE.completePrimaryLinkedStorageTierUpgrade(serverLevel, mainInventoryHandler.size(), mainBE.getStorageWrapper().getUpgradeHandler().size());
 		removeFromController();
 		tryToAddToController();
-		// TODO(port): Slice 4 - invalidateCapabilities();
+		sophisticatedStorage_invalidateCapabilities();
 		return true;
 	}
 

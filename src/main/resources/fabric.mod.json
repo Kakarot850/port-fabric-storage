@@ -38,11 +38,21 @@
   },
   "custom": {
     "modmenu": {
+      "badges": [
+      ],
       "parent": {
         "id": "sophisticatedmods",
         "name": "Sophisticated Mods",
         "description": "Group of P3pp3rF1y's Sophisticated Mods"
       }
+    },
+    "loom:injected_interfaces": {
+      "net/minecraft/server/level/ServerLevel": [
+        "net/p3pp3rf1y/sophisticatedstorage/extensions/level/SophisticatedStorageServerLevel"
+      ],
+      "net/minecraft/world/level/block/entity/BlockEntity": [
+        "net/p3pp3rf1y/sophisticatedstorage/extensions/block/entity/SophisticatedStorageBlockEntity"
+      ]
     }
   }
 }

@@ -2,6 +2,8 @@ package net.p3pp3rf1y.sophisticatedstorage;
 
 import fuzs.forgeconfigapiport.fabric.api.v5.ConfigRegistry;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
@@ -36,6 +38,9 @@ public class SophisticatedStorage implements ModInitializer {
 		ModItems.registerHandlers();
 		ModParticles.registerParticles();
 		ModPayloads.registerPayloads();
+		ServerChunkEvents.CHUNK_LOAD.register((serverLevel, chunk, generated) -> serverLevel.sophisticatedStorage_invalidateCapabilities(chunk.getPos()));
+		ServerChunkEvents.CHUNK_UNLOAD.register((serverLevel, chunk) -> serverLevel.sophisticatedStorage_invalidateCapabilities(chunk.getPos()));
+		ServerTickEvents.END_LEVEL_TICK.register(serverLevel -> serverLevel.sophisticatedStorage_cleanCapabilityListenerReferences());
 	}
 
 	public static Identifier getIdentifier(String regName) {

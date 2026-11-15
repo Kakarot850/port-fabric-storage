@@ -328,7 +328,7 @@ public class TankBlockEntity extends StorageBlockEntity implements INativeContro
 			level.setBlock(segment.worldPosition, segment.getBlockState().setValue(TankBlock.FACING, getBlockState().getValue(TankBlock.FACING))
 					.setValue(TankBlock.FORM, TankForm.at(index, newHeight)).setValue(TankBlock.SHOW_TIER, shouldShowTier()).setValue(TankBlock.PACKED, packed),
 					Block.UPDATE_CLIENTS);
-			// TODO(port): Slice 4 - segment.invalidateCapabilities();
+			segment.sophisticatedStorage_invalidateCapabilities();
 			segment.setChanged();
 			segment.synchronize();
 		}
@@ -396,7 +396,7 @@ public class TankBlockEntity extends StorageBlockEntity implements INativeContro
 		}
 		for (int index = 0; index < height; index++) {
 			WorldHelper.getBlockEntity(level, worldPosition.above(index), TankBlockEntity.class).ifPresent(segment -> {
-				// TODO(port): Slice 4 - segment.invalidateCapabilities();
+				segment.sophisticatedStorage_invalidateCapabilities();
 				segment.setChanged();
 				segment.synchronize();
 			});

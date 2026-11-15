@@ -215,7 +215,6 @@ public abstract class StorageBlockBase extends BlockBase implements IStorageBloc
 		return false;
 	}
 
-	// TODO(port): Slice 4 - wire from LevelMixin#updateNeighbourForOutputSignal
 	public void onNeighborChange(BlockState state, LevelReader level, BlockPos pos, BlockPos neighbor) {
 		WorldHelper.getBlockEntity(level, pos, StorageBlockEntity.class).ifPresent(be -> be.onNeighborChange(neighbor));
 	}

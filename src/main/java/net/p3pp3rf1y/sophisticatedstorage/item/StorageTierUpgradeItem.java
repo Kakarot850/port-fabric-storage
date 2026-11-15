@@ -333,8 +333,8 @@ public class StorageTierUpgradeItem extends ItemBase {
 				level.getBlockState(otherPos).updateNeighbourShapes(level, otherPos, 3);
 				// Joining during shape updates can register a half before its final chest type is applied.
 				ChestBlock.normalizeDoubleChestControllerRegistration(level, pos, otherPos);
-				// TODO(port): Slice 4 - upgradedBe.invalidateCapabilities();
-				// TODO(port): Slice 4 - otherUpgradedBe.invalidateCapabilities();
+				upgradedBe.sophisticatedStorage_invalidateCapabilities();
+				otherUpgradedBe.sophisticatedStorage_invalidateCapabilities();
 			}
 			upgradedBe.tryToAddToController();
 			return true;

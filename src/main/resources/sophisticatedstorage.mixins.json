@@ -4,8 +4,14 @@
   "package": "net.p3pp3rf1y.sophisticatedstorage.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "common.BlockEntityMixin",
+    "common.EntityMixin",
+    "common.LevelMixin",
+    "common.LivingEntityMixin",
+    "common.ServerLevelMixin"
   ],
   "client": [
+    "client.GuiMixin"
   ],
   "injectors": {
     "defaultRequire": 1

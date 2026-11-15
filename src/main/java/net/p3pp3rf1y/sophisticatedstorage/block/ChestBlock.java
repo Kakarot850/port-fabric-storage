@@ -372,8 +372,7 @@ public class ChestBlock extends WoodStorageBlockBase implements SimpleWaterlogge
 							} else if (!primaryLinkedStorage) {
 								newChestPart.removeFromController();
 								newChestPart.tryToAddToController();
-								// TODO(port): Slice 4 - invalidateCapabilities
-								// newChestPart.invalidateCapabilities();
+								newChestPart.sophisticatedStorage_invalidateCapabilities();
 								newChestPart.syncTogglesFrom(mainChest);
 							}
 						}
@@ -593,7 +592,7 @@ public class ChestBlock extends WoodStorageBlockBase implements SimpleWaterlogge
 		}
 	}
 
-	// TODO(port): Slice 4 - wire from LevelMixin#updateNeighbourForOutputSignal
+	@Override
 	public void onNeighborChange(BlockState state, LevelReader level, BlockPos pos, BlockPos neighbor) {
 		if (state.getValue(TYPE) != ChestType.SINGLE && pos.relative(getConnectedDirection(state)).equals(neighbor)) {
 			return;

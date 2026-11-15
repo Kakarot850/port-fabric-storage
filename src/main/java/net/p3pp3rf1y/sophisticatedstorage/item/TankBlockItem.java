@@ -81,7 +81,6 @@ public class TankBlockItem extends BlockItem {
 				.translItem(TRANSLATION_NAME, MODE_TRANSLATION_KEY, getMode(stack).getDisplayName().copy().withStyle(ChatFormatting.WHITE))
 				.withStyle(ChatFormatting.GOLD);
 	}
-	// TODO(port): Slice 4 - hook via GuiMixin
 	public Component getHighlightTip(ItemStack stack, Component displayName) {
 		return displayName.copy().append(" - ").append(getModeMessage(stack));
 	}
