@@ -1,0 +1,22 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:bamboo_storage_connector"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": "minecraft:bamboo_planks",
+    "S": "minecraft:stick"
+  },
+  "pattern": [
+    "SPS",
+    "PSP",
+    "SPS"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:bamboo_storage_connector"
+  }
+}

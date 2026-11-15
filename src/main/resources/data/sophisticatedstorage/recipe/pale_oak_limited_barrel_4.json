@@ -1,0 +1,26 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:limited_barrel_4"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "L": "minecraft:lever",
+    "P": "minecraft:pale_oak_planks",
+    "S": "minecraft:pale_oak_slab"
+  },
+  "pattern": [
+    "SPS",
+    "PLP",
+    "SPS"
+  ],
+  "result": {
+    "components": {
+      "sophisticatedstorage:wood_type": "pale_oak"
+    },
+    "id": "sophisticatedstorage:limited_barrel_4"
+  }
+}

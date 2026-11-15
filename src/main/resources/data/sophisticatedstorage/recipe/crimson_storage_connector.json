@@ -1,0 +1,22 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:crimson_storage_connector"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": "minecraft:crimson_planks",
+    "S": "minecraft:stick"
+  },
+  "pattern": [
+    "SPS",
+    "PSP",
+    "SPS"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:crimson_storage_connector"
+  }
+}

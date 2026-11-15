@@ -1,0 +1,24 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:advanced_compacting_upgrade"
+    }
+  ],
+  "type": "sophisticatedcore:upgrade_next_tier",
+  "category": "misc",
+  "key": {
+    "C": "sophisticatedstorage:compacting_upgrade",
+    "D": "#c:gems/diamond",
+    "G": "#c:ingots/gold",
+    "R": "#c:dusts/redstone"
+  },
+  "pattern": [
+    " D ",
+    "GCG",
+    "RRR"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:advanced_compacting_upgrade"
+  }
+}

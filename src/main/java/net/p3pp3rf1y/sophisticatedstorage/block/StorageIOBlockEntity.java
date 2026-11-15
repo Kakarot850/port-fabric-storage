@@ -134,7 +134,7 @@ public class StorageIOBlockEntity extends BlockEntity implements IControllerBoun
 
 	@Override
 	public void addToController(Level level, BlockPos pos, BlockPos controllerPos) {
-		WorldHelper.getBlockEntity(level, controllerPos, ControllerBlockEntityBase.class).ifPresent(c -> c.addStorage(pos));
+		WorldHelper.getLoadedBlockEntity(level, controllerPos, ControllerBlockEntityBase.class).ifPresent(c -> c.addStorage(pos));
 	}
 
 	@Override
@@ -157,7 +157,7 @@ public class StorageIOBlockEntity extends BlockEntity implements IControllerBoun
 			if (isLinked()) {
 				unlinkFromController();
 			} else {
-				getControllerPos().flatMap(p -> WorldHelper.getBlockEntity(level, p, ControllerBlockEntityBase.class))
+				getControllerPos().flatMap(p -> WorldHelper.getLoadedBlockEntity(level, p, ControllerBlockEntityBase.class))
 						.ifPresent(c -> c.removeNonConnectingBlock(getBlockPos()));
 				removeControllerPos();
 			}

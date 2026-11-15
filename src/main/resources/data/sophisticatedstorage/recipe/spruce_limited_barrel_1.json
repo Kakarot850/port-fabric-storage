@@ -1,0 +1,26 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:limited_barrel_1"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "L": "minecraft:lever",
+    "P": "minecraft:spruce_planks",
+    "S": "minecraft:spruce_slab"
+  },
+  "pattern": [
+    "PSP",
+    "PLP",
+    "PPP"
+  ],
+  "result": {
+    "components": {
+      "sophisticatedstorage:wood_type": "spruce"
+    },
+    "id": "sophisticatedstorage:limited_barrel_1"
+  }
+}

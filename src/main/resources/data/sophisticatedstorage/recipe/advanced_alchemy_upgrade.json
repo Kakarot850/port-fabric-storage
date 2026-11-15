@@ -1,0 +1,24 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:advanced_alchemy_upgrade"
+    }
+  ],
+  "type": "sophisticatedcore:upgrade_next_tier",
+  "category": "misc",
+  "key": {
+    "A": "sophisticatedstorage:alchemy_upgrade",
+    "D": "#c:gems/diamond",
+    "G": "#c:ingots/gold",
+    "R": "#c:dusts/redstone"
+  },
+  "pattern": [
+    " D ",
+    "GAG",
+    "RRR"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:advanced_alchemy_upgrade"
+  }
+}

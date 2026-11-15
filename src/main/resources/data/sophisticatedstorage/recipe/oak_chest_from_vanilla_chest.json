@@ -1,0 +1,20 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:chest"
+    }
+  ],
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:chest",
+    "minecraft:lever"
+  ],
+  "result": {
+    "components": {
+      "sophisticatedstorage:wood_type": "oak"
+    },
+    "id": "sophisticatedstorage:chest"
+  }
+}

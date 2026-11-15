@@ -1,0 +1,26 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:limited_barrel_4"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "L": "minecraft:lever",
+    "P": "minecraft:acacia_planks",
+    "S": "minecraft:acacia_slab"
+  },
+  "pattern": [
+    "SPS",
+    "PLP",
+    "SPS"
+  ],
+  "result": {
+    "components": {
+      "sophisticatedstorage:wood_type": "acacia"
+    },
+    "id": "sophisticatedstorage:limited_barrel_4"
+  }
+}

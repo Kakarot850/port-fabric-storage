@@ -1,0 +1,24 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:pickup_upgrade"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "sophisticatedstorage:upgrade_base",
+    "L": "#minecraft:planks",
+    "P": "minecraft:sticky_piston",
+    "R": "#c:dusts/redstone"
+  },
+  "pattern": [
+    " P ",
+    "LBL",
+    "RRR"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:pickup_upgrade"
+  }
+}

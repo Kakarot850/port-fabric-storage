@@ -1,0 +1,17 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:shulker_box"
+    }
+  ],
+  "type": "sophisticatedstorage:shulker_box_from_vanilla_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:shulker_box",
+    "minecraft:lever"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:shulker_box"
+  }
+}

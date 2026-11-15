@@ -1,0 +1,20 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:barrel"
+    }
+  ],
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:barrel",
+    "minecraft:lever"
+  ],
+  "result": {
+    "components": {
+      "sophisticatedstorage:wood_type": "spruce"
+    },
+    "id": "sophisticatedstorage:barrel"
+  }
+}

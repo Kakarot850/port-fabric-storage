@@ -1,0 +1,27 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:alchemy_upgrade"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "sophisticatedstorage:upgrade_base",
+    "F": "minecraft:fermented_spider_eye",
+    "G": "minecraft:glass_bottle",
+    "I": "#c:ingots/iron",
+    "P": "minecraft:ender_pearl",
+    "R": "minecraft:blaze_rod",
+    "T": "minecraft:ghast_tear"
+  },
+  "pattern": [
+    "TGF",
+    "IBI",
+    "RPR"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:alchemy_upgrade"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:limited_copper_barrel_1"
+    }
+  ],
+  "type": "sophisticatedstorage:storage_tier_upgrade",
+  "category": "misc",
+  "key": {
+    "C": "#c:ingots/copper",
+    "S": "sophisticatedstorage:limited_barrel_1"
+  },
+  "pattern": [
+    "CCC",
+    "CSC",
+    "CCC"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:limited_copper_barrel_1"
+  }
+}

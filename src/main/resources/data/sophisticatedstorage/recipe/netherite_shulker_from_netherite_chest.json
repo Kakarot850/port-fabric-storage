@@ -1,0 +1,22 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:netherite_shulker_box"
+    }
+  ],
+  "type": "sophisticatedstorage:shulker_box_from_chest",
+  "category": "misc",
+  "key": {
+    "C": "sophisticatedstorage:netherite_chest",
+    "S": "minecraft:shulker_shell"
+  },
+  "pattern": [
+    "S",
+    "C",
+    "S"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:netherite_shulker_box"
+  }
+}

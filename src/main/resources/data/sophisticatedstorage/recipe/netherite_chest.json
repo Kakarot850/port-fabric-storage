@@ -1,0 +1,17 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:netherite_chest"
+    }
+  ],
+  "type": "sophisticatedstorage:storage_tier_upgrade_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "sophisticatedstorage:diamond_chest",
+    "#c:ingots/netherite"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:netherite_chest"
+  }
+}

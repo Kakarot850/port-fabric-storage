@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "sophisticatedstorage:simple_material",
+    "model": "sophisticatedstorage:block/spruce_storage_connector"
+  }
+}

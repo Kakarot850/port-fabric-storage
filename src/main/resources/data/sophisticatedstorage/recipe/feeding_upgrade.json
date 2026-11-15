@@ -1,0 +1,25 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:feeding_upgrade"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": "minecraft:golden_apple",
+    "B": "sophisticatedstorage:upgrade_base",
+    "C": "minecraft:golden_carrot",
+    "E": "#c:ender_pearls",
+    "M": "minecraft:glistering_melon_slice"
+  },
+  "pattern": [
+    " C ",
+    "ABM",
+    " E "
+  ],
+  "result": {
+    "id": "sophisticatedstorage:feeding_upgrade"
+  }
+}

@@ -156,12 +156,12 @@ public class StorageConnectorBlockEntity extends BlockEntity implements IControl
 
 	@Override
 	public void addToController(Level level, BlockPos pos, BlockPos controllerPos) {
-		WorldHelper.getBlockEntity(level, controllerPos, ControllerBlockEntityBase.class).ifPresent(c -> c.addStorage(pos));
+		WorldHelper.getLoadedBlockEntity(level, controllerPos, ControllerBlockEntityBase.class).ifPresent(c -> c.addStorage(pos));
 	}
 
 	public void removeFromController() {
 		if (controllerPos != null && !level.isClientSide()) {
-			WorldHelper.getBlockEntity(level, controllerPos, ControllerBlockEntityBase.class)
+			WorldHelper.getLoadedBlockEntity(level, controllerPos, ControllerBlockEntityBase.class)
 					.ifPresent(controller -> controller.removeBoundable(worldPosition));
 			removeControllerPos();
 		}

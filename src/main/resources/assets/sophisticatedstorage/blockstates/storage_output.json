@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "opaque=false": {
+      "model": "sophisticatedstorage:block/storage_output",
+      "fabric:type": "sophisticatedstorage:simple_material_blockstate_model_loader"
+    },
+    "opaque=true": {
+      "model": "sophisticatedstorage:block/storage_output",
+      "fabric:type": "sophisticatedstorage:simple_material_blockstate_model_loader"
+    }
+  }
+}

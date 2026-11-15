@@ -1,0 +1,21 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:shulker_box"
+    }
+  ],
+  "type": "sophisticatedstorage:shulker_box_from_vanilla_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:gray_shulker_box",
+    "minecraft:lever"
+  ],
+  "result": {
+    "components": {
+      "sophisticatedcore:accent_color": -12103854,
+      "sophisticatedcore:main_color": -12103854
+    },
+    "id": "sophisticatedstorage:shulker_box"
+  }
+}

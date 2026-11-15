@@ -1,0 +1,22 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:advanced_filter_upgrade"
+    }
+  ],
+  "type": "sophisticatedcore:upgrade_next_tier",
+  "category": "misc",
+  "key": {
+    "G": "#c:ingots/gold",
+    "P": "sophisticatedstorage:filter_upgrade",
+    "R": "#c:dusts/redstone"
+  },
+  "pattern": [
+    "GPG",
+    "RRR"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:advanced_filter_upgrade"
+  }
+}

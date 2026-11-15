@@ -1,0 +1,22 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:iron_barrel"
+    }
+  ],
+  "type": "sophisticatedstorage:storage_tier_upgrade",
+  "category": "misc",
+  "key": {
+    "I": "#c:ingots/iron",
+    "S": "sophisticatedstorage:barrel"
+  },
+  "pattern": [
+    "III",
+    "ISI",
+    "III"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:iron_barrel"
+  }
+}

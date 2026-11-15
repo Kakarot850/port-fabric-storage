@@ -1,0 +1,26 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:barrel"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "L": "minecraft:lever",
+    "P": "minecraft:crimson_planks",
+    "S": "minecraft:crimson_slab"
+  },
+  "pattern": [
+    "PSP",
+    "PLP",
+    "PSP"
+  ],
+  "result": {
+    "components": {
+      "sophisticatedstorage:wood_type": "crimson"
+    },
+    "id": "sophisticatedstorage:barrel"
+  }
+}

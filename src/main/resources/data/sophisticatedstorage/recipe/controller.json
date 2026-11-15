@@ -1,0 +1,26 @@
+{
+  "fabric:load_conditions": [
+    {
+      "condition": "sophisticatedcore:item_enabled",
+      "itemRegistryName": "sophisticatedstorage:controller"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "fabric:type": "sophisticatedstorage:base_tier_wooden_storage"
+    },
+    "C": "minecraft:comparator",
+    "P": "#minecraft:planks",
+    "S": "#c:stones"
+  },
+  "pattern": [
+    "SCS",
+    "PBP",
+    "SCS"
+  ],
+  "result": {
+    "id": "sophisticatedstorage:controller"
+  }
+}
