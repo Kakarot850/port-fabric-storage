@@ -18,8 +18,9 @@ public class ModCompat {
 	public static void register() {
 		CompatRegistry registry = CompatRegistry.getRegistry(SophisticatedStorage.MOD_ID);
 		// Skipped on 26.1.2 Fabric: quark (NeoForge-only), sophisticatedbackpacks (not yet ported), chipped (excluded upstream).
-		registry.registerCompat(new CompatInfo(SAWMILL_MOD_ID), SawmillCompat::new);
-		registry.registerCompat(new CompatInfo(CompatModIds.TRASH_SLOT), TrashSlotCompat::new);
-		registry.registerCompat(new CompatInfo(TOMS_STORAGE, CompatRegistry.fromSpec(">=2.2.0")), TomsStorageCompat::new);
+		// Extra Supplier<Supplier<ICompat>> indirection prevents JVM from resolving optional compat class method handles when unloaded.
+		registry.registerCompat(new CompatInfo(SAWMILL_MOD_ID), () -> SawmillCompat::new);
+		registry.registerCompat(new CompatInfo(CompatModIds.TRASH_SLOT), () -> TrashSlotCompat::new);
+		registry.registerCompat(new CompatInfo(TOMS_STORAGE, CompatRegistry.fromSpec(">=2.2.0")), () -> TomsStorageCompat::new);
 	}
 }
