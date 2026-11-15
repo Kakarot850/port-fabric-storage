@@ -1,0 +1,431 @@
+package net.p3pp3rf1y.sophisticatedstorage.block;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.ResourceHandler;
+import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.item.ItemResource;
+import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.transaction.Transaction;
+import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.transaction.TransactionContext;
+import net.p3pp3rf1y.sophisticatedcore.api.IStorageFluidHandler;
+import net.p3pp3rf1y.sophisticatedcore.controller.ControllerBlockEntityBase;
+import net.p3pp3rf1y.sophisticatedcore.inventory.ItemStackKey;
+import net.p3pp3rf1y.sophisticatedcore.util.InventoryHelper;
+import net.p3pp3rf1y.sophisticatedcore.util.ValueIOHelper;
+import net.p3pp3rf1y.sophisticatedcore.util.VoxelOutliner;
+import net.p3pp3rf1y.sophisticatedcore.util.WorldHelper;
+import net.p3pp3rf1y.sophisticatedstorage.Config;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModBlocks;
+
+import javax.annotation.Nullable;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class ControllerBlockEntity extends ControllerBlockEntityBase
+		implements
+			ILockable,
+			ICountDisplay,
+			ITierDisplay,
+			IUpgradeDisplay,
+			IFillLevelDisplay,
+			ISimpleMaterialHolder {
+	private long lastDepositTime = -100;
+
+	@Nullable
+	private Identifier material = null;
+	private boolean overlayHidden = false;
+	private List<VoxelOutliner.Edge> cachedStorageEdges = null;
+	private List<VoxelOutliner.Edge> cachedLinkedBlockEdges = null;
+	private List<VoxelOutliner.Edge> cachedControllerEdges = null;
+
+	public ControllerBlockEntity(BlockPos pos, BlockState state) {
+		super(ModBlocks.CONTROLLER_BLOCK_ENTITY_TYPE.get(), pos, state);
+	}
+
+	public IStorageFluidHandler getExternalFluidHandler(@Nullable Direction side) {
+		return new ControllerFluidHandler(() -> isRemoved() || level == null || level.isClientSide()
+				? List.of()
+				: getLoadedStorageRepresentatives().stream().filter(INativeControllerFluidStorage.class::isInstance)
+						.map(INativeControllerFluidStorage.class::cast).map(INativeControllerFluidStorage::getControllerFluidHandler).flatMap(Optional::stream)
+						.toList());
+	}
+
+	public void depositPlayerItems(Player player, InteractionHand hand) {
+		if (getLevel() == null) {
+			return;
+		}
+		long gameTime = getLevel().getGameTime();
+		boolean doubleClick = gameTime - lastDepositTime < 10;
+		lastDepositTime = gameTime;
+		if (doubleClick) {
+			Map<Integer, Integer> insertedBySlot = new LinkedHashMap<>();
+			try (Transaction tx = Transaction.openRoot()) {
+				InventoryHelper.iteratePlayerInventory(player, (slot, stack) -> {
+					if (canDepositStack(stack, tx)) {
+						int inserted = insertItem(stack, tx, false);
+						if (inserted > 0) {
+							insertedBySlot.put(slot, inserted);
+						}
+					}
+				});
+				if (!insertedBySlot.isEmpty()) {
+					tx.commit();
+				}
+			}
+			insertedBySlot.forEach((slot, inserted) -> player.getInventory().removeItem(slot, inserted));
+			return;
+		}
+
+		ItemStack itemInHand = player.getItemInHand(hand);
+		if (!itemInHand.isEmpty() && canDepositStack(itemInHand)) {
+			try (Transaction tx = Transaction.openRoot()) {
+				int inserted = insertItem(itemInHand, tx, false);
+				if (inserted > 0) {
+					tx.commit();
+					player.setItemInHand(hand,
+							inserted == itemInHand.getCount() ? ItemStack.EMPTY : itemInHand.copyWithCount(itemInHand.getCount() - inserted));
+				}
+			}
+		}
+	}
+
+	private boolean canDepositStack(ItemStack stack) {
+		return !stack.isEmpty() && (hasItem(stack.getItem()) || isMemorizedItem(stack) || isFilterItem(stack.getItem()) || hasMatchingFilter(stack));
+	}
+
+	private boolean canDepositStack(ItemStack stack, TransactionContext tx) {
+		return !stack.isEmpty() && (hasItem(stack.getItem()) || isMemorizedItem(stack) || isFilterItem(stack.getItem()) || hasMatchingFilter(stack, tx));
+	}
+
+	@Override
+	public void toggleLock() {
+		Set<ILockable> unlockedStorages = new HashSet<>();
+		Set<ILockable> lockedStorages = new HashSet<>();
+		getStorageGroupAnchors().forEach(storagePosition -> WorldHelper.getLoadedBlockEntity(level, storagePosition, ILockable.class).ifPresent(lockable -> {
+			if (lockable.isLocked()) {
+				lockedStorages.add(lockable);
+			} else {
+				unlockedStorages.add(lockable);
+			}
+		}));
+
+		if (unlockedStorages.isEmpty()) {
+			lockedStorages.forEach(ILockable::toggleLock);
+		} else {
+			unlockedStorages.forEach(ILockable::toggleLock);
+		}
+	}
+
+	@Override
+	public boolean isLocked() {
+		return false;
+	}
+
+	@Override
+	public boolean shouldShowLock() {
+		return false;
+	}
+
+	@Override
+	public void toggleLockVisibility() {
+		Set<ILockable> invisibleLockStorages = new HashSet<>();
+		Set<ILockable> visibleLockStorages = new HashSet<>();
+		getStorageGroupAnchors().forEach(storagePosition -> WorldHelper.getLoadedBlockEntity(level, storagePosition, ILockable.class).ifPresent(lockable -> {
+			if (lockable.isLocked()) {
+				if (lockable.shouldShowLock()) {
+					visibleLockStorages.add(lockable);
+				} else {
+					invisibleLockStorages.add(lockable);
+				}
+			}
+		}));
+
+		if (invisibleLockStorages.isEmpty()) {
+			visibleLockStorages.forEach(ILockable::toggleLockVisibility);
+		} else {
+			invisibleLockStorages.forEach(ILockable::toggleLockVisibility);
+		}
+	}
+
+	@Override
+	public boolean shouldShowCounts() {
+		return false;
+	}
+
+	@Override
+	public void toggleCountVisibility() {
+		Set<ICountDisplay> invisibleCountStorages = new HashSet<>();
+		Set<ICountDisplay> visibleCountStorages = new HashSet<>();
+		getStorageGroupAnchors()
+				.forEach(storagePosition -> WorldHelper.getLoadedBlockEntity(level, storagePosition, ICountDisplay.class).ifPresent(countDisplay -> {
+					if (countDisplay.shouldShowCounts()) {
+						visibleCountStorages.add(countDisplay);
+					} else {
+						invisibleCountStorages.add(countDisplay);
+					}
+				}));
+
+		if (invisibleCountStorages.isEmpty()) {
+			visibleCountStorages.forEach(ICountDisplay::toggleCountVisibility);
+		} else {
+			invisibleCountStorages.forEach(ICountDisplay::toggleCountVisibility);
+		}
+	}
+
+	@Override
+	public List<Integer> getSlotCounts() {
+		return List.of();
+	}
+
+	@Override
+	public boolean shouldShowTier() {
+		return false;
+	}
+
+	@Override
+	public void toggleTierVisiblity() {
+		Set<ITierDisplay> invisibleTierStorages = new HashSet<>();
+		Set<ITierDisplay> visibleTierStorages = new HashSet<>();
+		getStorageGroupAnchors()
+				.forEach(storagePosition -> WorldHelper.getLoadedBlockEntity(level, storagePosition, ITierDisplay.class).ifPresent(tierDisplay -> {
+					if (tierDisplay.shouldShowTier()) {
+						visibleTierStorages.add(tierDisplay);
+					} else {
+						invisibleTierStorages.add(tierDisplay);
+					}
+				}));
+
+		if (invisibleTierStorages.isEmpty()) {
+			visibleTierStorages.forEach(ITierDisplay::toggleTierVisiblity);
+		} else {
+			invisibleTierStorages.forEach(ITierDisplay::toggleTierVisiblity);
+		}
+	}
+
+	@Override
+	public boolean shouldShowUpgrades() {
+		return false;
+	}
+
+	@Override
+	public void toggleUpgradesVisiblity() {
+		Set<IUpgradeDisplay> invisibleUpgradeStorages = new HashSet<>();
+		Set<IUpgradeDisplay> visibleUpgradeStorages = new HashSet<>();
+		getStorageBlockPositions()
+				.forEach(storagePosition -> WorldHelper.getLoadedBlockEntity(level, storagePosition, IUpgradeDisplay.class).ifPresent(upgradeDisplay -> {
+					if (upgradeDisplay.shouldShowUpgrades()) {
+						visibleUpgradeStorages.add(upgradeDisplay);
+					} else {
+						invisibleUpgradeStorages.add(upgradeDisplay);
+					}
+				}));
+
+		if (invisibleUpgradeStorages.isEmpty()) {
+			visibleUpgradeStorages.forEach(IUpgradeDisplay::toggleUpgradesVisiblity);
+		} else {
+			invisibleUpgradeStorages.forEach(IUpgradeDisplay::toggleUpgradesVisiblity);
+		}
+	}
+
+	@Override
+	public boolean shouldShowFillLevels() {
+		return false;
+	}
+
+	@Override
+	public void toggleFillLevelVisibility() {
+		Set<IFillLevelDisplay> invisibleFillLevelStorages = new HashSet<>();
+		Set<IFillLevelDisplay> visibleFillLevelStorages = new HashSet<>();
+		getStorageBlockPositions()
+				.forEach(storagePosition -> WorldHelper.getLoadedBlockEntity(level, storagePosition, IFillLevelDisplay.class).ifPresent(fillLevelDisplay -> {
+					if (fillLevelDisplay.shouldShowFillLevels()) {
+						visibleFillLevelStorages.add(fillLevelDisplay);
+					} else {
+						invisibleFillLevelStorages.add(fillLevelDisplay);
+					}
+				}));
+
+		if (invisibleFillLevelStorages.isEmpty()) {
+			visibleFillLevelStorages.forEach(IFillLevelDisplay::toggleFillLevelVisibility);
+		} else {
+			invisibleFillLevelStorages.forEach(IFillLevelDisplay::toggleFillLevelVisibility);
+		}
+	}
+
+	@Override
+	public List<Float> getSlotFillLevels() {
+		return List.of();
+	}
+
+	public ResourceHandler<ItemResource> getExternalItemResourceHandler() {
+		return this;
+	}
+
+	@Override
+	protected int getSearchRange() {
+		return Config.SERVER.controllerRange.getAsInt();
+	}
+
+	@Override
+	protected void saveAdditional(ValueOutput out) {
+		super.saveAdditional(out);
+		saveSimpleMaterialData(out);
+	}
+
+	@Override
+	public void loadAdditional(ValueInput in) {
+		super.loadAdditional(in);
+		loadSimpleMaterialData(in);
+		cachedStorageEdges = null;
+		cachedLinkedBlockEdges = null;
+	}
+
+	public void onDataPacket(Object net, ValueInput in) {
+		loadAdditional(in);
+	}
+
+	@Override
+	public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+		return super.getUpdateTag(registries).merge(ValueIOHelper.collectOutputToTag(registries, this::saveSimpleMaterialData));
+	}
+
+	@Override
+	public Optional<Identifier> getMaterial() {
+		return Optional.ofNullable(material);
+	}
+
+	@Override
+	public void setMaterial(@Nullable Identifier material) {
+		if (Objects.equals(this.material, material)) {
+			SimpleMaterialBlockData.updateOpaqueState(this, getMaterial());
+			return;
+		}
+		this.material = material;
+		SimpleMaterialBlockData.updateOpaqueState(this, getMaterial());
+		setChanged();
+		WorldHelper.notifyBlockUpdate(this);
+	}
+
+	@Override
+	public void sophisticatedCore_onLoad() {
+		super.sophisticatedCore_onLoad();
+		SimpleMaterialBlockData.updateOpaqueState(this, getMaterial());
+	}
+
+	@Override
+	public boolean isOverlayHidden() {
+		return overlayHidden;
+	}
+
+	@Override
+	public void setOverlayHidden(boolean overlayHidden) {
+		if (this.overlayHidden == overlayHidden) {
+			return;
+		}
+		this.overlayHidden = overlayHidden;
+		setChanged();
+		WorldHelper.notifyBlockUpdate(this);
+	}
+
+	public List<VoxelOutliner.Edge> getStorageBlockEdges() {
+		if (cachedStorageEdges == null) {
+			Set<BlockPos> positions = new HashSet<>();
+			getStorageBlockPositions().forEach(pos -> positions.addAll(StoragePositionGroups.getGroup(level, pos).memberPositions()));
+			cachedStorageEdges = VoxelOutliner.computeRenderableEdges(positions);
+		}
+		return cachedStorageEdges;
+	}
+
+	@Override
+	protected Set<BlockPos> getStorageMemberPositions(BlockPos storagePos) {
+		return super.getStorageMemberPositions(storagePos).stream()
+				.flatMap(memberPosition -> StoragePositionGroups.getGroup(level, memberPosition).memberPositions().stream())
+				.collect(Collectors.toCollection(LinkedHashSet::new));
+	}
+
+	public Set<BlockPos> getStorageBlockPositions() {
+		Set<BlockPos> positions = new HashSet<>();
+		getStoragePositions().stream().filter(pos -> !getLinkedBlocks().contains(pos)).forEach(pos -> positions.addAll(getStorageMemberPositions(pos)));
+		return positions;
+	}
+
+	private Set<BlockPos> getStorageGroupAnchors() {
+		return StoragePositionGroups.getGroups(level, getStorageBlockPositions()).keySet();
+	}
+
+	public Set<BlockPos> getStorageTierUpgradePositions() {
+		return getStorageBlockPositions().stream()
+				.filter(storagePos -> WorldHelper.getLoadedBlockEntity(level, storagePos, StorageBlockEntity.class)
+						.map(storage -> !(level instanceof ServerLevel serverLevel) || storage.canUpgradeStorageTier(serverLevel)).orElse(false))
+				.collect(Collectors.toSet());
+	}
+
+	public List<VoxelOutliner.Edge> getLinkedBlockEdges() {
+		if (cachedLinkedBlockEdges == null) {
+			cachedLinkedBlockEdges = new ArrayList<>();
+			getLinkedBlocks().forEach(linkedPos -> cachedLinkedBlockEdges.addAll(VoxelOutliner.computeShapeRenderableEdges(level, List.of(linkedPos))));
+		}
+		return cachedLinkedBlockEdges;
+	}
+
+	public List<VoxelOutliner.Edge> getControllerEdges() {
+		if (cachedControllerEdges == null) {
+			cachedControllerEdges = VoxelOutliner.computeRenderableEdges(List.of(worldPosition));
+		}
+		return cachedControllerEdges;
+	}
+
+	public List<BlockPos> getStackStorages(ItemStackKey stackKey) {
+		List<BlockPos> result = new ArrayList<>();
+		result.addAll(stackStorages.getOrDefault(stackKey, Collections.emptySet()));
+		result.addAll(memorizedStackStorages.getOrDefault(stackKey.hashCode(), Collections.emptySet()));
+		return result;
+	}
+
+	public List<BlockPos> getHighlightStoragePositions(Collection<BlockPos> storagePositions) {
+		return storagePositions.stream().flatMap(storagePos -> getStorageMemberPositions(storagePos).stream()).distinct().toList();
+	}
+
+	public List<BlockPos> getItemStorages(ItemStackKey stackKey) {
+		Set<BlockPos> positions = new HashSet<>();
+		Item item = stackKey.stack().getItem();
+		if (itemStackKeys.containsKey(item)) {
+			itemStackKeys.get(item).forEach(sk -> {
+				if (sk.equals(stackKey)) {
+					return;
+				}
+				if (stackStorages.containsKey(sk)) {
+					positions.addAll(stackStorages.get(sk));
+				}
+			});
+		}
+		positions.addAll(memorizedItemStorages.getOrDefault(item, Collections.emptySet()));
+		positions.addAll(filterItemStorages.getOrDefault(item, Collections.emptySet()));
+		getStackStorages(stackKey).forEach(positions::remove);
+		return new ArrayList<>(positions);
+	}
+
+	public List<BlockPos> getEmptyTargetSlotStorages(ItemStackKey stackKey) {
+		Set<BlockPos> positions = new HashSet<>(emptySlotsStorages);
+		getStackStorages(stackKey).forEach(positions::remove);
+		getItemStorages(stackKey).forEach(positions::remove);
+		ItemResource copy = stackKey.toResource();
+		positions.removeIf(p -> {
+			try (Transaction tx = Transaction.openRoot()) {
+				return insertIntoStorage(p, copy, 1, tx) == 0;
+			}
+		});
+		return new ArrayList<>(positions);
+	}
+}

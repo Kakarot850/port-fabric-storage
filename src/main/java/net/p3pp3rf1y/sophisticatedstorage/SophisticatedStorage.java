@@ -5,6 +5,11 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModBlocks;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModDataComponents;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModItems;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModParticles;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModPayloads;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,6 +31,11 @@ public class SophisticatedStorage implements ModInitializer {
 		ConfigRegistry.INSTANCE.register(MOD_ID, ModConfig.Type.CLIENT, Config.CLIENT_SPEC);
 		ConfigRegistry.INSTANCE.register(MOD_ID, ModConfig.Type.COMMON, Config.COMMON_SPEC);
 		Config.SERVER.initListeners();
+		ModDataComponents.register();
+		ModBlocks.registerHandlers();
+		ModItems.registerHandlers();
+		ModParticles.registerParticles();
+		ModPayloads.registerPayloads();
 	}
 
 	public static Identifier getIdentifier(String regName) {

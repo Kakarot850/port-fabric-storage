@@ -1,0 +1,307 @@
+package net.p3pp3rf1y.sophisticatedstorage.block;
+
+import com.mojang.serialization.Codec;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.item.ItemResource;
+import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.transaction.Transaction;
+import net.p3pp3rf1y.sophisticatedcore.api.IStorageWrapper;
+import net.p3pp3rf1y.sophisticatedcore.inventory.InventoryHandler;
+import net.p3pp3rf1y.sophisticatedcore.settings.SettingsHandler;
+import net.p3pp3rf1y.sophisticatedcore.settings.itemdisplay.ItemDisplaySettingsCategory;
+import net.p3pp3rf1y.sophisticatedcore.settings.memory.MemorySettingsCategory;
+import net.p3pp3rf1y.sophisticatedcore.settings.nosort.NoSortSettingsCategory;
+import net.p3pp3rf1y.sophisticatedcore.upgrades.voiding.VoidType;
+import net.p3pp3rf1y.sophisticatedcore.upgrades.voiding.VoidUpgradeWrapper;
+import net.p3pp3rf1y.sophisticatedcore.util.*;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModBlocks;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+
+public class LimitedBarrelBlockEntity extends BarrelBlockEntity implements ICountDisplay, IFillLevelDisplay {
+	public static final Codec<Map<Integer, DyeColor>> SLOT_COLORS_CODEC = Codec.unboundedMap(CodecHelper.STRING_ENCODED_INT, DyeColor.CODEC);
+
+	public static final StreamCodec<FriendlyByteBuf, Map<Integer, DyeColor>> SLOT_COLORS_STREAM_CODEC = StreamCodecHelper.ofMap(ByteBufCodecs.INT,
+			DyeColor.STREAM_CODEC, HashMap::new);
+
+	public static final Consumer<VoidUpgradeWrapper> VOID_UPGRADE_VOIDING_OVERFLOW_OF_EVERYTHING_BY_DEFAULT = voidUpgrade -> {
+		voidUpgrade.getFilterLogic().setAllowByDefault(false);
+		voidUpgrade.setVoidOverflowDefaultOrLoadFromNbt(VoidType.SLOT_OVERFLOW);
+	};
+	public static final String STORAGE_TYPE = "limited_barrel";
+	private long lastDepositTime = -100;
+
+	private Map<Integer, DyeColor> slotColors = new HashMap<>();
+	private boolean showCounts = true;
+	private boolean showFillLevels = false;
+	private boolean useLightInFrontForFrontRender = true;
+
+	public LimitedBarrelBlockEntity(BlockPos pos, BlockState state) {
+		super(pos, state, ModBlocks.LIMITED_BARREL_BLOCK_ENTITY_TYPE.get());
+		registerUpgradeDefaults();
+	}
+
+	public void setUseLightInFrontForFrontRender(boolean useLightInFrontForFrontRender) {
+		this.useLightInFrontForFrontRender = useLightInFrontForFrontRender;
+	}
+
+	public boolean shouldUseLightInFrontForFrontRender() {
+		return useLightInFrontForFrontRender;
+	}
+
+	public static void setFixedSettings(IStorageWrapper storageWrapper, int numberOfInventorySlots) {
+		SettingsHandler settingsHandler = storageWrapper.getSettingsHandler();
+		ItemDisplaySettingsCategory itemDisplaySettingsCategory = settingsHandler.getTypeCategory(ItemDisplaySettingsCategory.class);
+		if (itemDisplaySettingsCategory.getSlots().size() != numberOfInventorySlots) {
+			itemDisplaySettingsCategory.selectSlots(0, numberOfInventorySlots);
+		}
+		NoSortSettingsCategory noSortSettingsCategory = settingsHandler.getTypeCategory(NoSortSettingsCategory.class);
+		if (noSortSettingsCategory.getNoSortSlots().size() != numberOfInventorySlots) {
+			noSortSettingsCategory.selectSlots(0, numberOfInventorySlots);
+		}
+	}
+
+	private void registerUpgradeDefaults() {
+		getStorageWrapper().registerUpgradeDefaultsHandler(VoidUpgradeWrapper.class, VOID_UPGRADE_VOIDING_OVERFLOW_OF_EVERYTHING_BY_DEFAULT);
+	}
+
+	@Override
+	public boolean shouldShowCounts() {
+		return showCounts;
+	}
+
+	@Override
+	public boolean memorizesItemsWhenLocked() {
+		return true;
+	}
+
+	@Override
+	public boolean allowsEmptySlotsMatchingItemInsertsWhenLocked() {
+		return false;
+	}
+
+	@Override
+	public void toggleCountVisibility() {
+		showCounts = !showCounts;
+		setChanged();
+		WorldHelper.notifyBlockUpdate(this);
+	}
+
+	@Override
+	public List<Integer> getSlotCounts() {
+		return getStorageWrapper().getRenderDataHandler().getDisplayData().slotCounts();
+	}
+
+	@Override
+	public boolean shouldShowFillLevels() {
+		return showFillLevels;
+	}
+
+	@Override
+	public void toggleFillLevelVisibility() {
+		showFillLevels = !showFillLevels;
+		setChanged();
+		WorldHelper.notifyBlockUpdate(this);
+	}
+
+	@Override
+	public List<Float> getSlotFillLevels() {
+		return getStorageWrapper().getRenderDataHandler().getDisplayData().slotFillRatios();
+	}
+
+	public boolean applyDye(int slot, ItemStack dyeStack, DyeColor dyeColor, boolean applyToAll) {
+		if (slot < 0 || slot >= getStorageWrapper().getInventoryHandler().size()) {
+			return false;
+		}
+
+		StorageWrapper storageWrapper = getStorageWrapper();
+		InventoryHandler invHandler = storageWrapper.getInventoryHandler();
+		if (applyToAll) {
+			boolean success = false;
+			for (int i = 0; i < invHandler.size(); i++) {
+				success |= applyDye(i, dyeColor, invHandler);
+			}
+			if (!success) {
+				return false;
+			}
+		} else {
+			if (!applyDye(slot, dyeColor, invHandler)) {
+				return false;
+			}
+		}
+		setChanged();
+
+		dyeStack.shrink(1);
+
+		WorldHelper.notifyBlockUpdate(this);
+
+		return true;
+	}
+
+	private boolean applyDye(int slot, DyeColor dyeColor, InventoryHandler invHandler) {
+		if (invHandler.getResource(slot).isEmpty() || dyeColor.equals(slotColors.get(slot))) {
+			return false;
+		}
+
+		slotColors.put(slot, dyeColor);
+		return true;
+	}
+
+	public int getSlotColor(int slot) {
+		return slotColors.getOrDefault(slot, DyeColor.WHITE).getTextColor();
+	}
+
+	public boolean depositItem(Player player, InteractionHand hand, ItemStack stackInHand, int slot) {
+		// noinspection ConstantConditions
+		long gameTime = getLevel().getGameTime();
+		boolean doubleClick = gameTime - lastDepositTime < 10;
+		lastDepositTime = gameTime;
+
+		StorageWrapper storageWrapper = getStorageWrapper();
+		InventoryHandler invHandler = storageWrapper.getInventoryHandler();
+		ItemResource resourceInSlot = invHandler.getResource(slot);
+
+		MemorySettingsCategory memorySettings = getStorageWrapper().getSettingsHandler().getTypeCategory(MemorySettingsCategory.class);
+
+		if (doubleClick) {
+			return depositFromAllOfPlayersInventory(player, slot, invHandler, resourceInSlot, memorySettings);
+		}
+
+		if (resourceInSlot.isEmpty()) {
+			ItemStack result = invHandler.insertItemOnlyToSlot(slot, stackInHand);
+			if (result.getCount() != stackInHand.getCount()) {
+				if (isLocked()) {
+					memorySettings.selectSlot(slot);
+				}
+				player.setItemInHand(hand, result);
+				return true;
+			}
+		} else {
+			ItemStack result = invHandler.insertItemOnlyToSlot(slot, stackInHand);
+			if (result.getCount() != stackInHand.getCount()) {
+				if (isLocked()) {
+					memorySettings.selectSlot(slot);
+					if (player instanceof ServerPlayer serverPlayer) {
+						syncLinkedStorageContentsToPlayer(serverPlayer);
+					}
+				}
+				player.setItemInHand(hand, result);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private boolean depositFromAllOfPlayersInventory(Player player, int slot, InventoryHandler invHandler, ItemResource itemResource,
+			MemorySettingsCategory memorySettings) {
+		AtomicBoolean success = new AtomicBoolean(false);
+		Predicate<ItemStack> memoryItemMatches = itemStack -> memorySettings.isSlotSelected(slot) && memorySettings.matchesFilter(slot, itemStack);
+		InventoryHelper.iteratePlayerInventory(player, (playerSlot, playerStack) -> {
+			if ((itemResource.isEmpty() && (memoryItemMatches.test(playerStack) || invHandler.isFilterItem(playerStack.getItem()))
+					|| (!playerStack.isEmpty() && itemResource.matches(playerStack)))) {
+
+				ItemStack result = invHandler.insertItemOnlyToSlot(slot, playerStack);
+				if (result.getCount() < playerStack.getCount()) {
+					int toExtract = playerStack.getCount() - result.getCount();
+					player.getInventory().removeItem(playerSlot, toExtract);
+					success.set(true);
+				}
+			}
+		});
+		return success.get();
+	}
+
+	boolean tryToTakeItem(Player player, int slot) {
+		InventoryHandler inventoryHandler = getStorageWrapper().getInventoryHandler();
+		ItemResource resourceInSlot = inventoryHandler.getResource(slot);
+		if (resourceInSlot.isEmpty()) {
+			return false;
+		}
+
+		int countToTake = player.isShiftKeyDown() ? Math.min(resourceInSlot.getMaxStackSize(), inventoryHandler.getAmountAsInt(slot)) : 1;
+		try (Transaction tx = Transaction.openRoot()) {
+			ItemStack stackTaken = resourceInSlot.toStack(inventoryHandler.extract(slot, resourceInSlot, countToTake, tx));
+			if (player.getInventory().add(stackTaken)) {
+				// noinspection ConstantConditions
+				getLevel().playSound(null, getBlockPos(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, .2f,
+						(RandHelper.getRandomMinusOneToOne(getLevel().getRandom()) * .7f + 1) * 2);
+			} else {
+				player.drop(stackTaken, false);
+			}
+			tx.commit();
+			return true;
+		}
+	}
+
+	@Override
+	void updateOpenBlockState(BlockState state, boolean open) {
+		// noop
+	}
+
+	@Override
+	public void sophisticatedCore_onLoad() {
+		super.sophisticatedCore_onLoad();
+
+		SettingsHandler settingsHandler = getStorageWrapper().getSettingsHandler();
+		settingsHandler.getTypeCategory(MemorySettingsCategory.class).setIgnoreNbt(false);
+		setFixedSettings(getStorageWrapper(), getStorageWrapper().getNumberOfInventorySlots());
+	}
+
+	@Override
+	public void loadSynchronizedData(ValueInput in) {
+		super.loadSynchronizedData(in);
+		showCounts = in.getBooleanOr("showCounts", true);
+		showFillLevels = in.getBooleanOr("showFillLevels", false);
+		slotColors = in.read("slotColors", SLOT_COLORS_CODEC).orElseGet(HashMap::new);
+	}
+
+	@Override
+	public void loadAdditional(ValueInput out) {
+		super.loadAdditional(out);
+		if (level == null || !level.isClientSide()) {
+			setFixedSettings(getStorageWrapper(), getStorageWrapper().getNumberOfInventorySlots());
+		}
+	}
+
+	@Override
+	protected void saveSynchronizedData(ValueOutput out) {
+		super.saveSynchronizedData(out);
+		if (!showCounts) {
+			out.putBoolean("showCounts", showCounts);
+		}
+		if (showFillLevels) {
+			out.putBoolean("showFillLevels", showFillLevels);
+		}
+		if (!slotColors.isEmpty()) {
+			out.store("slotColors", SLOT_COLORS_CODEC, slotColors);
+		}
+	}
+
+	@Override
+	protected String getStorageType() {
+		return STORAGE_TYPE;
+	}
+
+	@Override
+	public float getSlotFillPercentage(int slot) {
+		return slot < getSlotFillLevels().size() ? getSlotFillLevels().get(slot) : 0;
+	}
+}

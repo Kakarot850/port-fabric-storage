@@ -22,6 +22,10 @@ import net.p3pp3rf1y.sophisticatedcore.upgrades.stack.StackUpgradeConfig;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.stack.StackUpgradeItem;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.voiding.VoidUpgradeConfig;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.xppump.XpPumpUpgradeConfig;
+import net.p3pp3rf1y.sophisticatedstorage.block.BarrelBlockEntity;
+import net.p3pp3rf1y.sophisticatedstorage.block.ChestBlockEntity;
+import net.p3pp3rf1y.sophisticatedstorage.block.LimitedBarrelBlockEntity;
+import net.p3pp3rf1y.sophisticatedstorage.block.ShulkerBoxBlockEntity;
 import net.p3pp3rf1y.sophisticatedstorage.client.gui.StorageTranslationHelper;
 import net.p3pp3rf1y.sophisticatedstorage.upgrades.compression.CompressionUpgradeConfig;
 import net.p3pp3rf1y.sophisticatedstorage.upgrades.hopper.HopperUpgradeConfig;
@@ -304,14 +308,13 @@ public class Config {
 			alchemyUpgrade = new AlchemyUpgradeConfig(builder, "Alchemy Upgrade", "alchemyUpgrade", 4);
 			advancedAlchemyUpgrade = new AlchemyUpgradeConfig(builder, "Advanced Alchemy Upgrade", "advancedAlchemyUpgrade", 8);
 
-			// TODO(port): replace with ChestBlockEntity/BarrelBlockEntity/ShulkerBoxBlockEntity/LimitedBarrelBlockEntity.STORAGE_TYPE when block entities land
-			maxUpgradesPerStorage = new MaxUgradesPerStorageConfig(builder, Map.of("chest",
+			maxUpgradesPerStorage = new MaxUgradesPerStorageConfig(builder, Map.of(ChestBlockEntity.STORAGE_TYPE,
 					Map.of(StackUpgradeItem.UPGRADE_GROUP.name(), 2, ICookingUpgrade.UPGRADE_GROUP.name(), 1, JukeboxUpgradeItem.UPGRADE_GROUP.name(), 1),
-					"barrel",
+					BarrelBlockEntity.STORAGE_TYPE,
 					Map.of(StackUpgradeItem.UPGRADE_GROUP.name(), 2, ICookingUpgrade.UPGRADE_GROUP.name(), 1, JukeboxUpgradeItem.UPGRADE_GROUP.name(), 1),
-					"shulker_box",
+					ShulkerBoxBlockEntity.STORAGE_TYPE,
 					Map.of(StackUpgradeItem.UPGRADE_GROUP.name(), 2, ICookingUpgrade.UPGRADE_GROUP.name(), 1, JukeboxUpgradeItem.UPGRADE_GROUP.name(), 1),
-					"limited_barrel", Map.of(ICookingUpgrade.UPGRADE_GROUP.name(), 1, JukeboxUpgradeItem.UPGRADE_GROUP.name(), 1)));
+					LimitedBarrelBlockEntity.STORAGE_TYPE, Map.of(ICookingUpgrade.UPGRADE_GROUP.name(), 1, JukeboxUpgradeItem.UPGRADE_GROUP.name(), 1)));
 
 			tooManyItemEntityDrops = builder.comment(
 					"Threshold of number of item entities dropped from chest / barrel above which break is canceled (unless shift key is pressed) and message is displayed explaining to player many drops and packing tape use")

@@ -1,0 +1,52 @@
+package net.p3pp3rf1y.sophisticatedstorage.item;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.inventory.tooltip.TooltipComponent;
+import net.minecraft.world.item.ItemStack;
+import net.p3pp3rf1y.sophisticatedcore.fabric.client.network.ClientPacketDistributor;
+import net.p3pp3rf1y.sophisticatedcore.linkedstorage.ClientLinkedStorageContents;
+import net.p3pp3rf1y.sophisticatedcore.linkedstorage.RequestLinkedStorageContentsPayload;
+import net.p3pp3rf1y.sophisticatedcore.network.ItemStackReference;
+import net.p3pp3rf1y.sophisticatedstorage.block.StorageBlockEntity;
+import org.jspecify.annotations.Nullable;
+
+import java.util.Optional;
+
+public class StorageItemClient {
+	private StorageItemClient() {
+	}
+
+	@Nullable
+	public static TooltipComponent getTooltipImage(ItemStack stack) {
+		return getTooltipImage(stack, stack);
+	}
+
+	@Nullable
+	public static TooltipComponent getTooltipImage(ItemStack stack, ItemStack contextStack) {
+		return getTooltipImage(stack, contextStack, true);
+	}
+
+	@Nullable
+	public static TooltipComponent getLinkedStorageTooltipImage(ItemStack stack) {
+		return getTooltipImage(stack, stack, false);
+	}
+
+	@Nullable
+	private static TooltipComponent getTooltipImage(ItemStack stack, ItemStack contextStack, boolean includeContents) {
+		Minecraft mc = Minecraft.getInstance();
+		Optional<LinkedStorageTooltip> linkedStorageTooltip = StorageBlockEntity.getLinkedStorageEndpointData(stack)
+				.flatMap(endpoint -> StorageBlockEntity.getLinkedStorageEndpointRole(stack).map(role -> new LinkedStorageTooltip(role, endpoint.groupId())));
+		if (!includeContents || !mc.hasShiftDown() && (mc.player == null || mc.player.containerMenu.getCarried().isEmpty())) {
+			linkedStorageTooltip.filter(
+					tooltip -> mc.player != null && ClientLinkedStorageContents.shouldRequestSnapshot(tooltip.groupId(), mc.player.level().getGameTime()))
+					.ifPresent(tooltip -> ItemStackReference.find(mc.player, contextStack)
+							.ifPresent(reference -> ClientPacketDistributor.sendToServer(new RequestLinkedStorageContentsPayload(tooltip.groupId(),
+									ClientLinkedStorageContents.getRevision(tooltip.groupId()).orElse(-1L), reference))));
+			return linkedStorageTooltip.<TooltipComponent>map(tooltip -> tooltip).orElse(null);
+		}
+		if (mc.hasShiftDown() || (mc.player != null && !mc.player.containerMenu.getCarried().isEmpty())) {
+			return new StorageContentsTooltip(stack, linkedStorageTooltip.orElse(null), contextStack);
+		}
+		return null;
+	}
+}

@@ -1,0 +1,343 @@
+package net.p3pp3rf1y.sophisticatedstorage.block;
+
+import com.google.common.collect.ImmutableMap;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.data.BlockFamilies;
+import net.minecraft.data.BlockFamily;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.RegistryOps;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.WoodType;
+import net.minecraft.world.phys.BlockHitResult;
+import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.ResourceHandlerUtil;
+import net.p3pp3rf1y.sophisticatedcore.controller.IControllerBoundable;
+import net.p3pp3rf1y.sophisticatedcore.init.ModCoreDataComponents;
+import net.p3pp3rf1y.sophisticatedcore.inventory.ContainerContents;
+import net.p3pp3rf1y.sophisticatedcore.inventory.InventoryHandler;
+import net.p3pp3rf1y.sophisticatedcore.linkedstorage.LinkedStorageEndpointRole;
+import net.p3pp3rf1y.sophisticatedcore.upgrades.ITickableUpgrade;
+import net.p3pp3rf1y.sophisticatedcore.upgrades.UpgradeHandler;
+import net.p3pp3rf1y.sophisticatedcore.util.ValueIOHelper;
+import net.p3pp3rf1y.sophisticatedcore.util.WorldHelper;
+import net.p3pp3rf1y.sophisticatedstorage.Config;
+import net.p3pp3rf1y.sophisticatedstorage.SophisticatedStorage;
+import net.p3pp3rf1y.sophisticatedstorage.client.gui.StorageTranslationHelper;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModBlocks;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModItems;
+import net.p3pp3rf1y.sophisticatedstorage.item.PackingTapeItem;
+import net.p3pp3rf1y.sophisticatedstorage.item.StorageBlockItem;
+import net.p3pp3rf1y.sophisticatedstorage.item.StorageToolItem;
+import net.p3pp3rf1y.sophisticatedstorage.item.WoodStorageBlockItem;
+import net.p3pp3rf1y.sophisticatedstorage.util.GenericWoodStorageHelper;
+import org.jspecify.annotations.Nullable;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+public abstract class WoodStorageBlockBase extends StorageBlockBase implements IAdditionalDropDataBlock {
+	public static final Map<WoodType, BlockFamily> CUSTOM_TEXTURE_WOOD_TYPES = ImmutableMap.<WoodType, BlockFamily>builder()
+			.put(WoodType.ACACIA, BlockFamilies.ACACIA_PLANKS).put(WoodType.BIRCH, BlockFamilies.BIRCH_PLANKS)
+			.put(WoodType.CRIMSON, BlockFamilies.CRIMSON_PLANKS).put(WoodType.DARK_OAK, BlockFamilies.DARK_OAK_PLANKS)
+			.put(WoodType.JUNGLE, BlockFamilies.JUNGLE_PLANKS).put(WoodType.OAK, BlockFamilies.OAK_PLANKS).put(WoodType.PALE_OAK, BlockFamilies.PALE_OAK_PLANKS)
+			.put(WoodType.SPRUCE, BlockFamilies.SPRUCE_PLANKS).put(WoodType.WARPED, BlockFamilies.WARPED_PLANKS)
+			.put(WoodType.MANGROVE, BlockFamilies.MANGROVE_PLANKS).put(WoodType.CHERRY, BlockFamilies.CHERRY_PLANKS)
+			.put(WoodType.BAMBOO, BlockFamilies.BAMBOO_PLANKS).build();
+
+	protected WoodStorageBlockBase(Properties properties, Supplier<Integer> numberOfInventorySlotsSupplier, Supplier<Integer> numberOfUpgradeSlotsSupplier) {
+		super(properties, numberOfInventorySlotsSupplier, numberOfUpgradeSlotsSupplier);
+	}
+
+	@Override
+	protected void onExplosionHit(BlockState state, ServerLevel level, BlockPos pos, Explosion explosion,
+			java.util.function.BiConsumer<ItemStack, BlockPos> onHit) {
+		if (Config.COMMON.dropPacked.get()) {
+			WorldHelper.getBlockEntity(level, pos, WoodStorageBlockEntity.class).ifPresent(wbe -> {
+				if (!wbe.isLinkedStorage() && isNonEmpty(wbe)) {
+					wbe.setPacked(true);
+				}
+			});
+		}
+		super.onExplosionHit(state, level, pos, explosion, onHit);
+	}
+
+	public void addDropData(ItemStack stack, StorageBlockEntity be) {
+		if (be instanceof WoodStorageBlockEntity wbe) {
+			addNameWoodAndTintData(stack, wbe);
+			if (wbe.isLinkedStorage()) {
+				wbe.copyLinkedStorageEndpointTo(stack);
+				return;
+			}
+			boolean packed = wbe.isPacked() || shouldNonEmptyDropPacked(wbe);
+			if (packed) {
+				StorageWrapper storageWrapper = be.getStorageWrapper();
+				UUID storageUuid = storageWrapper.getContentsUuid().orElse(UUID.randomUUID());
+				CompoundTag additionalBeData = getStorageAdditionalData(be);
+				ContainerContents contents = storageWrapper.getContents().copy();
+				ItemContentsStorage itemContentsStorage = ItemContentsStorage.get();
+				itemContentsStorage.setContents(storageUuid, contents);
+				if (!additionalBeData.isEmpty()) {
+					itemContentsStorage.setAdditionalBeData(storageUuid, additionalBeData);
+					stack.set(ModCoreDataComponents.STORAGE_UUID, storageUuid);
+				}
+				WoodStorageBlockItem.setPacked(stack, true);
+				StorageBlockItem.setShowsTier(stack, be.shouldShowTier());
+				StorageBlockItem.setNumberOfInventorySlots(stack, storageWrapper.getInventoryHandler().size());
+				StorageBlockItem.setNumberOfUpgradeSlots(stack, storageWrapper.getUpgradeHandler().size());
+			}
+		}
+	}
+
+	protected CompoundTag getStorageAdditionalData(StorageBlockEntity be) {
+		CompoundTag additionalBeData = be.saveWithoutMetadata(be.getLevel().registryAccess());
+		additionalBeData.getCompound(StorageBlockEntity.STORAGE_WRAPPER).ifPresent(tag -> tag.remove(StorageWrapper.CONTENTS));
+		additionalBeData.remove(IControllerBoundable.CONTROLLER_POS);
+		additionalBeData.remove(WoodStorageBlockEntity.PACKED);
+		return additionalBeData;
+	}
+
+	private static boolean shouldNonEmptyDropPacked(WoodStorageBlockEntity wbe) {
+		if (!Config.COMMON.dropPacked.get()) {
+			return false;
+		}
+
+		return isNonEmpty(wbe);
+	}
+
+	private static boolean isNonEmpty(WoodStorageBlockEntity wbe) {
+		if (!ResourceHandlerUtil.isEmpty(wbe.getStorageWrapper().getInventoryHandler()))
+			return true;
+		return !ResourceHandlerUtil.isEmpty(wbe.getStorageWrapper().getUpgradeHandler());
+	}
+
+	protected void addNameWoodAndTintData(ItemStack stack, WoodStorageBlockEntity wbe) {
+		if (stack.getItem() instanceof ITintableBlockItem tintableBlockItem) {
+			int mainColor = wbe.getStorageWrapper().getMainColor();
+			if (mainColor != -1) {
+				tintableBlockItem.setMainColor(stack, mainColor);
+			}
+			int accentColor = wbe.getStorageWrapper().getAccentColor();
+			if (accentColor != -1) {
+				tintableBlockItem.setAccentColor(stack, accentColor);
+			}
+		}
+		if (wbe.hasCustomName()) {
+			stack.set(DataComponents.CUSTOM_NAME, wbe.getCustomName());
+		}
+		wbe.getWoodType().ifPresent(n -> WoodStorageBlockItem.setWoodType(stack, n));
+	}
+
+	@Override
+	public void addCreativeTabItems(Consumer<ItemStack> itemConsumer) {
+		if (!Config.CLIENT_SPEC.isLoaded() || Config.CLIENT.showSingleWoodVariantOnly.get()) {
+			itemConsumer.accept(WoodStorageBlockItem.setWoodType(new ItemStack(this), WoodType.ACACIA));
+		} else {
+			CUSTOM_TEXTURE_WOOD_TYPES.keySet().forEach(woodType -> itemConsumer.accept(WoodStorageBlockItem.setWoodType(new ItemStack(this), woodType)));
+			if (shouldShowGenericWoodVariants()) {
+				GenericWoodStorageHelper.getEnabledGenericWoodTypes()
+						.forEach(woodType -> itemConsumer.accept(WoodStorageBlockItem.setWoodType(new ItemStack(this), woodType)));
+			}
+		}
+
+		if (isBasicTier()) {
+			for (DyeColor color : DyeColor.values()) {
+				ItemStack storageStack = new ItemStack(this);
+				if (storageStack.getItem() instanceof ITintableBlockItem tintableBlockItem) {
+					tintableBlockItem.setMainColor(storageStack, color.getTextureDiffuseColor());
+					tintableBlockItem.setAccentColor(storageStack, color.getTextureDiffuseColor());
+				}
+				itemConsumer.accept(storageStack);
+			}
+			ItemStack storageStack = new ItemStack(this);
+			if (storageStack.getItem() instanceof ITintableBlockItem tintableBlockItem) {
+				tintableBlockItem.setMainColor(storageStack, DyeColor.YELLOW.getTextureDiffuseColor());
+				tintableBlockItem.setAccentColor(storageStack, DyeColor.LIME.getTextureDiffuseColor());
+			}
+			itemConsumer.accept(storageStack);
+		}
+	}
+
+	private boolean isBasicTier() {
+		return this == ModBlocks.BARREL.get() || this == ModBlocks.CHEST.get() || this == ModBlocks.LIMITED_BARREL_1.get()
+				|| this == ModBlocks.LIMITED_BARREL_2.get() || this == ModBlocks.LIMITED_BARREL_3.get() || this == ModBlocks.LIMITED_BARREL_4.get();
+	}
+
+	private boolean shouldShowGenericWoodVariants() {
+		return isBasicTier() || Config.CLIENT.showHigherTierGenericWoodVariants.get();
+	}
+
+	@Override
+	public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData) {
+		ItemStack stack = new ItemStack(this);
+		WorldHelper.getBlockEntity(level, pos, WoodStorageBlockEntity.class).ifPresent(be -> {
+			if (includeData && be.isPacked()) {
+				addDropData(stack, be);
+			} else {
+				addNameWoodAndTintData(stack, be);
+			}
+		});
+		return stack;
+	}
+
+	@Override
+	public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
+		if (level.isClientSide()) {
+			WorldHelper.getBlockEntity(level, pos, WoodStorageBlockEntity.class).ifPresent(be -> setRenderBlockRenderProperties(stack, be));
+			return;
+		}
+		ServerLevel serverLevel = (ServerLevel) level;
+
+		WorldHelper.getBlockEntity(level, pos, WoodStorageBlockEntity.class).ifPresent(be -> {
+			UUID storageUuid = stack.get(ModCoreDataComponents.STORAGE_UUID);
+			if (storageUuid != null && !StorageBlockEntity.hasLinkedStorageEndpoint(stack)) {
+				ItemContentsStorage itemContentsStorage = ItemContentsStorage.get();
+				if (itemContentsStorage.has(storageUuid)) {
+					be.setBeingUpgraded(true);
+
+					CompoundTag beTag = itemContentsStorage.getOrCreateAddtionalBeData(storageUuid);
+					ContainerContents contents = itemContentsStorage.getOrCreateContents(storageUuid);
+					Tag contentsTag = ContainerContents.CODEC.encodeStart(RegistryOps.create(NbtOps.INSTANCE, be.getLevel().registryAccess()), contents)
+							.getOrThrow();
+					beTag.getCompound(StorageBlockEntity.STORAGE_WRAPPER).ifPresent(tag -> tag.put(StorageWrapper.CONTENTS, contentsTag));
+					be.loadAdditional(ValueIOHelper.inputFromCompoundTag(level.registryAccess(), beTag));
+					itemContentsStorage.removeContents(storageUuid);
+					itemContentsStorage.removeAddtionalBeData(storageUuid);
+
+					setNewSize(stack, be);
+					setTicking(level, pos, state, !be.getStorageWrapper().getUpgradeHandler().getWrappersThatImplement(ITickableUpgrade.class).isEmpty());
+				} else {
+					SophisticatedStorage.LOGGER
+							.error("No storage contents found for uuid: " + storageUuid + " when placing " + stack.getHoverName().getString());
+				}
+			}
+
+			if (stack.has(DataComponents.CUSTOM_NAME) && (!StorageBlockEntity.hasLinkedStorageEndpoint(stack)
+					|| StorageBlockEntity.getLinkedStorageEndpointRole(stack).orElse(null) == LinkedStorageEndpointRole.PRIMARY)) {
+				be.setCustomName(stack.getHoverName());
+			}
+			if (stack.has(DataComponents.CUSTOM_NAME)
+					&& StorageBlockEntity.getLinkedStorageEndpointRole(stack).orElse(null) == LinkedStorageEndpointRole.PRIMARY) {
+				StorageLinkedStorageEndpointAdapter.synchronizePrimaryCarrier(serverLevel, stack);
+			}
+			setRenderBlockRenderProperties(stack, be);
+			if (shouldRestoreLinkedStorageEndpoint(stack)) {
+				if (placer instanceof Player player && player.getAbilities().instabuild && StorageBlockEntity.hasLinkedStorageEndpoint(stack)) {
+					be.restoreCreativeLinkedStorageEndpoint(serverLevel, stack);
+				} else {
+					be.restoreLinkedStorageEndpoint(serverLevel, stack);
+				}
+			}
+
+			be.getStorageWrapper().onInit(level);
+			be.tryToAddToController();
+
+			if (placer != null && placer.getOffhandItem().getItem() == ModItems.STORAGE_TOOL.get()) {
+				StorageToolItem.useOffHandOnPlaced(placer.getOffhandItem(), be);
+			}
+			be.setBeingUpgraded(false);
+		});
+	}
+
+	protected boolean shouldRestoreLinkedStorageEndpoint(ItemStack stack) {
+		return true;
+	}
+
+	private void setNewSize(ItemStack stack, WoodStorageBlockEntity be) {
+		StorageWrapper storageWrapper = be.getStorageWrapper();
+		InventoryHandler inventoryHandler = storageWrapper.getInventoryHandler();
+		UpgradeHandler upgradeHandler = storageWrapper.getUpgradeHandler();
+		storageWrapper.changeSize(StorageBlockItem.getNumberOfInventorySlots(stack) - inventoryHandler.size(),
+				StorageBlockItem.getNumberOfUpgradeSlots(stack) - upgradeHandler.size());
+	}
+
+	protected void setRenderBlockRenderProperties(ItemStack stack, WoodStorageBlockEntity be) {
+		WoodStorageBlockItem.getWoodType(stack).ifPresent(be::setWoodType);
+		be.getStorageWrapper().setColors(StorageBlockItem.getMainColorFromComponentHolder(stack).orElse(-1),
+				StorageBlockItem.getAccentColorFromComponentHolder(stack).orElse(-1));
+		be.setUpdateBlockRender();
+		WorldHelper.notifyBlockUpdate(be);
+	}
+
+	@Override
+	public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+		BlockState ret = super.playerWillDestroy(level, pos, state, player);
+		WorldHelper.getBlockEntity(level, pos, WoodStorageBlockEntity.class).ifPresent(wbe -> {
+			if (!wbe.isLinkedStorage() && Config.COMMON.dropPacked.get() && isNonEmpty(wbe)) {
+				wbe.setPacked(true);
+			}
+
+			if (wbe.isPacked()) {
+				if (player.isCreative()) {
+					if (!ResourceHandlerUtil.isEmpty(wbe.getStorageWrapper().getInventoryHandler())
+							|| !ResourceHandlerUtil.isEmpty(wbe.getStorageWrapper().getUpgradeHandler())) {
+						ItemStack drop = new ItemStack(this);
+						addDropData(drop, wbe);
+						ItemEntity itementity = new ItemEntity(level, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, drop);
+						itementity.setDefaultPickUpDelay();
+						level.addFreshEntity(itementity);
+					}
+				}
+			}
+		});
+		return ret;
+	}
+
+	@SuppressWarnings("java:S1172") // parameter is used in override
+	protected InteractionResult tryItemInteraction(Player player, InteractionHand hand, WoodStorageBlockEntity b, ItemStack stackInHand, Direction facing,
+			BlockHitResult hitResult) {
+		if (stackInHand.getItem() instanceof PackingTapeItem) {
+			if (Config.COMMON.dropPacked.get()) {
+				player.sendOverlayMessage(Component.translatable("gui.sophisticatedstorage.status.packing_tape_disabled"));
+				return InteractionResult.FAIL;
+			} else {
+				InteractionResult interactionResult = packStorage(player, hand, b, stackInHand);
+				if (interactionResult instanceof InteractionResult.Success success && success.heldItemTransformedTo() != null
+						&& success.heldItemTransformedTo().isEmpty()) {
+					player.setItemInHand(hand, ItemStack.EMPTY);
+				}
+				return interactionResult;
+			}
+		}
+		return tryAddUpgrade(player, b, stackInHand, facing, hitResult);
+	}
+
+	protected InteractionResult packStorage(Player player, InteractionHand hand, WoodStorageBlockEntity b, ItemStack stackInHand) {
+		if (b.isLinkedStorage()) {
+			player.sendOverlayMessage(StorageTranslationHelper.INSTANCE.translStatusMessage("packing_tape_linked_storage"));
+			return InteractionResult.FAIL;
+		}
+		if (!player.isCreative()) {
+			stackInHand.setDamageValue(stackInHand.getDamageValue() + 1);
+		}
+
+		BlockState blockState = b.getBlockState();
+		if (blockState.getBlock() instanceof StorageBlockBase storageBlock && blockState.getValue(TICKING)) {
+			storageBlock.setTicking(player.level(), b.getBlockPos(), blockState, false);
+		}
+
+		b.setPacked(true);
+
+		b.removeFromController();
+
+		WorldHelper.notifyBlockUpdate(b);
+
+		return InteractionResult.SUCCESS.heldItemTransformedTo(stackInHand.getDamageValue() >= stackInHand.getMaxDamage() ? ItemStack.EMPTY : stackInHand);
+	}
+}

@@ -1,0 +1,288 @@
+package net.p3pp3rf1y.sophisticatedstorage.block;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.p3pp3rf1y.sophisticatedcore.fabric.capabilities.Capabilities;
+import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.ResourceHandler;
+import net.p3pp3rf1y.sophisticatedcore.fabric.transfer.item.ItemResource;
+import net.p3pp3rf1y.sophisticatedcore.api.IStorageFluidHandler;
+import net.p3pp3rf1y.sophisticatedcore.controller.ControllerBlockEntityBase;
+import net.p3pp3rf1y.sophisticatedcore.controller.IControllerBoundable;
+import net.p3pp3rf1y.sophisticatedcore.controller.ILinkable;
+import net.p3pp3rf1y.sophisticatedcore.util.ValueIOHelper;
+import net.p3pp3rf1y.sophisticatedcore.util.WorldHelper;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModBlocks;
+import org.jspecify.annotations.Nullable;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+
+public class StorageIOBlockEntity extends BlockEntity implements IControllerBoundable, ILinkable, ISimpleMaterialHolder {
+	@Nullable
+	private BlockPos controllerPos = null;
+	@Nullable
+	private Identifier material = null;
+	private boolean isLinkedToController = false;
+	private boolean overlayHidden = false;
+	private boolean chunkBeingUnloaded = false;
+
+	// TODO(port): Slice 4 - BlockCapabilityCache<ResourceHandler<ItemResource>, Direction> controllerItemHandlerCache;
+	@Nullable
+	private Object controllerItemHandlerCache;
+
+	protected StorageIOBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+	}
+
+	public StorageIOBlockEntity(BlockPos pos, BlockState state) {
+		this(ModBlocks.STORAGE_IO_BLOCK_ENTITY_TYPE.get(), pos, state);
+	}
+
+	@Override
+	public Set<BlockPos> getConnectablePositions() {
+		return Collections.emptySet();
+	}
+
+	@Override
+	public boolean connectLinkedSelf() {
+		return true;
+	}
+
+	@Override
+	public void setControllerPos(BlockPos controllerPos) {
+		setControllerPos(controllerPos, true);
+	}
+
+	private void setControllerPos(BlockPos controllerPos, boolean updateWorld) {
+		this.controllerPos = controllerPos;
+		if (updateWorld) {
+			invalidateItemHandlerCache();
+			setChanged();
+			WorldHelper.notifyBlockUpdate(this);
+		} else {
+			controllerItemHandlerCache = null;
+		}
+	}
+
+	@Override
+	public Optional<BlockPos> getControllerPos() {
+		return Optional.ofNullable(controllerPos);
+	}
+
+	@Override
+	public boolean isLinked() {
+		return isLinkedToController && getControllerPos().isPresent();
+	}
+
+	@Override
+	public void linkToController(BlockPos controllerPos) {
+		if (getControllerPos().isPresent()) {
+			return;
+		}
+
+		isLinkedToController = true;
+		ILinkable.super.linkToController(controllerPos);
+		setChanged();
+	}
+
+	@Override
+	public void setNotLinked() {
+		ILinkable.super.setNotLinked();
+		isLinkedToController = false;
+		removeControllerPos();
+		setChanged();
+	}
+
+	@Override
+	public void removeControllerPos() {
+		controllerPos = null;
+		invalidateItemHandlerCache();
+		setChanged();
+		WorldHelper.notifyBlockUpdate(this);
+	}
+
+	@Override
+	public BlockPos getStorageBlockPos() {
+		return getBlockPos();
+	}
+
+	@Override
+	public Level getStorageBlockLevel() {
+		return getLevel();
+	}
+
+	@Override
+	public boolean canConnectStorages() {
+		return false;
+	}
+
+	@Override
+	public void addToController(Level level, BlockPos pos, BlockPos controllerPos) {
+		WorldHelper.getBlockEntity(level, controllerPos, ControllerBlockEntityBase.class).ifPresent(c -> c.addStorage(pos));
+	}
+
+	@Override
+	public boolean canBeConnected() {
+		return isLinked() || getControllerPos().isEmpty();
+	}
+
+	@Override
+	public void registerController(ControllerBlockEntityBase controllerBlockEntity) {
+		setControllerPos(controllerBlockEntity.getBlockPos());
+	}
+
+	@Override
+	public void unregisterController() {
+		removeControllerPos();
+	}
+
+	public void removeFromController() {
+		if (!level.isClientSide()) {
+			if (isLinked()) {
+				unlinkFromController();
+			} else {
+				getControllerPos().flatMap(p -> WorldHelper.getBlockEntity(level, p, ControllerBlockEntityBase.class))
+						.ifPresent(c -> c.removeNonConnectingBlock(getBlockPos()));
+				removeControllerPos();
+			}
+		}
+	}
+
+	@Override
+	protected void saveAdditional(ValueOutput out) {
+		super.saveAdditional(out);
+		saveControllerPos(out);
+		saveSimpleMaterialData(out);
+		if (isLinkedToController) {
+			out.putBoolean("isLinkedToController", isLinkedToController);
+		}
+	}
+
+	@Override
+	public void loadAdditional(ValueInput in) {
+		super.loadAdditional(in);
+		in.read(CONTROLLER_POS, BlockPos.CODEC).ifPresent(controllerPos -> setControllerPos(controllerPos, false));
+		loadSimpleMaterialData(in);
+		isLinkedToController = in.getBooleanOr("isLinkedToController", false);
+	}
+
+	@Override
+	public Optional<Identifier> getMaterial() {
+		return Optional.ofNullable(material);
+	}
+
+	@Override
+	public void setMaterial(@Nullable Identifier material) {
+		if (Objects.equals(this.material, material)) {
+			SimpleMaterialBlockData.updateOpaqueState(this, getMaterial());
+			return;
+		}
+		this.material = material;
+		SimpleMaterialBlockData.updateOpaqueState(this, getMaterial());
+		setChanged();
+		WorldHelper.notifyBlockUpdate(this);
+	}
+
+	@Override
+	public void sophisticatedCore_onLoad() {
+		super.sophisticatedCore_onLoad();
+		chunkBeingUnloaded = false;
+		SimpleMaterialBlockData.updateOpaqueState(this, getMaterial());
+	}
+
+	@Override
+	public boolean isOverlayHidden() {
+		return overlayHidden;
+	}
+
+	@Override
+	public void setOverlayHidden(boolean overlayHidden) {
+		if (this.overlayHidden == overlayHidden) {
+			return;
+		}
+		this.overlayHidden = overlayHidden;
+		setChanged();
+		WorldHelper.notifyBlockUpdate(this);
+	}
+
+	@Override
+	public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+		return super.getUpdateTag(registries).merge(ValueIOHelper.collectOutputToTag(registries, this::saveAdditional));
+	}
+
+	@Nullable
+	@Override
+	public Packet<ClientGamePacketListener> getUpdatePacket() {
+		return ClientboundBlockEntityDataPacket.create(this);
+	}
+
+	protected void invalidateItemHandlerCache() {
+		controllerItemHandlerCache = null;
+		// TODO(port): Slice 4 - invalidateCapabilities();
+	}
+
+	@Nullable
+	@SuppressWarnings("java:S1640") // can't use EnumMap because one of keys is null
+	public ResourceHandler<ItemResource> getExternalItemResourceHandler(@Nullable Direction side) {
+		if (getControllerPos().isEmpty()) {
+			return null;
+		}
+
+		// TODO(port): Slice 4 - restore BlockCapabilityCache
+		return WorldHelper.getBlockEntity(getLevel(), getControllerPos().get(), ControllerBlockEntity.class)
+				.map(ControllerBlockEntity::getExternalItemResourceHandler).orElse(null);
+	}
+
+	@Nullable
+	public IStorageFluidHandler getExternalFluidHandler(@Nullable Direction side) {
+		if (getControllerPos().isEmpty() || level == null || isRemoved() || chunkBeingUnloaded) {
+			return null;
+		}
+		return new ControllerFluidHandler(() -> getControllerFluidHandlers(side));
+	}
+
+	private List<IStorageFluidHandler> getControllerFluidHandlers(@Nullable Direction side) {
+		if (controllerPos == null || level == null || level.isClientSide() || isRemoved() || chunkBeingUnloaded) {
+			return List.of();
+		}
+		return WorldHelper.getLoadedBlockEntity(level, controllerPos, ControllerBlockEntity.class).filter(controller -> !controller.isRemoved())
+				.map(controller -> List.of(controller.getExternalFluidHandler(side))).orElseGet(List::of);
+	}
+
+	@Override
+	public void sophisticatedCore_onChunkUnloaded() {
+		super.sophisticatedCore_onChunkUnloaded();
+		chunkBeingUnloaded = true;
+	}
+
+	@Override
+	public void setRemoved() {
+		if (!chunkBeingUnloaded && level != null) {
+			unlinkFromController();
+		}
+
+		super.setRemoved();
+	}
+
+	@Override
+	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+		super.preRemoveSideEffects(pos, state);
+		removeFromController();
+	}
+}

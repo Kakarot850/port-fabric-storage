@@ -1,0 +1,24 @@
+package net.p3pp3rf1y.sophisticatedstorage.init;
+
+import net.p3pp3rf1y.sophisticatedcore.fabric.network.registration.PayloadRegistrar;
+import net.p3pp3rf1y.sophisticatedstorage.SophisticatedStorage;
+import net.p3pp3rf1y.sophisticatedstorage.network.*;
+
+public class ModPayloads {
+	private ModPayloads() {
+	}
+
+	public static void registerPayloads() {
+		final PayloadRegistrar registrar = new PayloadRegistrar(SophisticatedStorage.MOD_ID).versioned(SophisticatedStorage.getNetworkProtocolVersion());
+		registrar.playToServer(OpenStorageInventoryPayload.TYPE, OpenStorageInventoryPayload.STREAM_CODEC, OpenStorageInventoryPayload::handlePayload);
+		registrar.playToServer(RequestStorageContentsPayload.TYPE, RequestStorageContentsPayload.STREAM_CODEC, RequestStorageContentsPayload::handlePayload);
+		registrar.playToClient(StorageContentsPayload.TYPE, StorageContentsPayload.STREAM_CODEC, StorageContentsPayload::handlePayload);
+		registrar.playToClient(TankMenuUpdatePayload.TYPE, TankMenuUpdatePayload.STREAM_CODEC, TankMenuUpdatePayload::handlePayload);
+		registrar.playToServer(ScrolledToolPayload.TYPE, ScrolledToolPayload.STREAM_CODEC, ScrolledToolPayload::handlePayload);
+		registrar.playToServer(RequestPlayerSettingsPayload.TYPE, RequestPlayerSettingsPayload.STREAM_CODEC,
+				(payload, context) -> RequestPlayerSettingsPayload.handlePayload(context));
+		registrar.playToClient(StorageOpennessPayload.TYPE, StorageOpennessPayload.STREAM_CODEC, StorageOpennessPayload::handlePayload);
+		registrar.playToServer(RequestControllerTargetHighlightsPayload.TYPE, RequestControllerTargetHighlightsPayload.STREAM_CODEC,
+				RequestControllerTargetHighlightsPayload::handlePayload);
+	}
+}
