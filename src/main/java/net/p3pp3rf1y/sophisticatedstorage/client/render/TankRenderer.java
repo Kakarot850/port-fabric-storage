@@ -92,7 +92,7 @@ public class TankRenderer extends StorageRenderer<TankBlockEntity, TankRenderer.
 		}
 		pose.pushPose();
 		pose.translate(.5, .5, .5);
-		pose.mulPose(DisplayItemRenderer.getNorthBasedRotation(state.facing));
+		pose.rotate(DisplayItemRenderer.getNorthBasedRotation(state.facing));
 		pose.translate(-.5, -.5, -.5);
 		if (state.showsUpgrades || holdsItemThatShowsUpgrades()) {
 			displayItems.submitUpgradeItems(collector, state, pose, OverlayTexture.NO_OVERLAY, holdsItemThatShowsUpgrades());

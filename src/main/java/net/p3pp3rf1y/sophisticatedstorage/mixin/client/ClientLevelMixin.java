@@ -24,10 +24,9 @@ public abstract class ClientLevelMixin {
 	@Final
 	private Minecraft minecraft;
 
-	@Inject(method = "addBreakingBlockEffect", at = @At("HEAD"), cancellable = true)
-	private void sophisticatedStorage_addBreakingBlockEffect(BlockPos pos, Direction direction, CallbackInfo ci) {
+	@Inject(method = "addBreakingParticles", at = @At("HEAD"), cancellable = true)
+	private void sophisticatedStorage_addBreakingParticles(BlockPos pos, Direction direction, BlockState state, CallbackInfo ci) {
 		ClientLevel self = (ClientLevel) (Object) this;
-		BlockState state = self.getBlockState(pos);
 		if (state.getBlock() instanceof BarrelBlock barrelBlock
 				&& BarrelBlockClientExtensions.addHitEffects(barrelBlock, state, self, pos, direction, this.minecraft.particleEngine)) {
 			ci.cancel();

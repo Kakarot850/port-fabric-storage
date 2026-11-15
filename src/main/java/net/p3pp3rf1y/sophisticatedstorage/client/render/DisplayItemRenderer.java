@@ -130,7 +130,7 @@ public class DisplayItemRenderer {
 
 		Vector3f frontOffset = getDisplayItemIndexFrontOffset(displayItemIndex, displayItemCount, (float) yCenterTranslation);
 		poseStack.translate(frontOffset.x(), frontOffset.y(), -itemOffset);
-		poseStack.mulPose(Axis.ZP.rotationDegrees(rotation));
+		poseStack.rotate(Axis.ZP.rotationDegrees(rotation));
 
 		float itemScale;
 		if (displayItemCount == 1) {

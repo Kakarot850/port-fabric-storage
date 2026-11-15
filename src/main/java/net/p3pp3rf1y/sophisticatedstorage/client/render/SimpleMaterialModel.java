@@ -39,6 +39,7 @@ import net.minecraft.client.resources.model.UnbakedModel;
 import net.minecraft.client.resources.model.cuboid.ItemTransform;
 import net.minecraft.client.resources.model.cuboid.ItemTransforms;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.client.resources.model.geometry.ItemQuads;
 import net.minecraft.client.resources.model.geometry.QuadCollection;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.client.resources.model.sprite.TextureSlots;
@@ -313,9 +314,18 @@ public class SimpleMaterialModel implements UnbakedModel, ResolvableModel {
 	private static BakedQuad respriteQuad(BakedQuad quad, TextureAtlasSprite newSprite) {
 		TextureAtlasSprite oldSprite = quad.materialInfo().sprite();
 		ChunkSectionLayer layer = newSprite.transparency().hasTranslucent() ? ChunkSectionLayer.TRANSLUCENT : ChunkSectionLayer.CUTOUT;
-		RenderType itemRenderType = newSprite.atlasLocation().equals(TextureAtlas.LOCATION_BLOCKS)
-				? (layer.translucent() ? Sheets.translucentBlockItemSheet() : Sheets.cutoutBlockItemSheet())
-				: (layer.translucent() ? Sheets.translucentItemSheet() : Sheets.cutoutItemSheet());
+		RenderType itemRenderType;
+		RenderType itemGlintRenderType;
+		RenderType itemGlintSpecialRenderType;
+		if (newSprite.atlasLocation().equals(TextureAtlas.LOCATION_BLOCKS)) {
+			itemRenderType = layer.translucent() ? Sheets.translucentBlockItemSheet() : Sheets.cutoutBlockItemSheet();
+			itemGlintRenderType = layer.translucent() ? Sheets.translucentBlockItemGlintSheet() : Sheets.cutoutBlockItemGlintSheet();
+			itemGlintSpecialRenderType = layer.translucent() ? Sheets.translucentBlockItemGlintSpecialSheet() : Sheets.cutoutBlockItemGlintSpecialSheet();
+		} else {
+			itemRenderType = layer.translucent() ? Sheets.translucentItemSheet() : Sheets.cutoutItemSheet();
+			itemGlintRenderType = layer.translucent() ? Sheets.translucentItemGlintSheet() : Sheets.cutoutItemGlintSheet();
+			itemGlintSpecialRenderType = layer.translucent() ? Sheets.translucentItemGlintSpecialSheet() : Sheets.cutoutItemGlintSpecialSheet();
+		}
 		long[] uvs = new long[4];
 		for (int vertexIndex = 0; vertexIndex < 4; vertexIndex++) {
 			long packedUv = quad.packedUV(vertexIndex);
@@ -323,8 +333,8 @@ public class SimpleMaterialModel implements UnbakedModel, ResolvableModel {
 			float v = remapV(oldSprite, newSprite, UVPair.unpackV(packedUv));
 			uvs[vertexIndex] = UVPair.pack(u, v);
 		}
-		BakedQuad.MaterialInfo materialInfo = new BakedQuad.MaterialInfo(newSprite, layer, itemRenderType, -1, quad.materialInfo().shade(),
-				quad.materialInfo().lightEmission());
+		BakedQuad.MaterialInfo materialInfo = new BakedQuad.MaterialInfo(newSprite, layer, itemRenderType, itemGlintRenderType, itemGlintSpecialRenderType, -1,
+				quad.materialInfo().shadeDirectionOverride(), quad.materialInfo().lightEmission());
 		return new BakedQuad(quad.position0(), quad.position1(), quad.position2(), quad.position3(), uvs[0], uvs[1], uvs[2], uvs[3],
 				quad.direction(), materialInfo);
 	}
@@ -390,7 +400,7 @@ public class SimpleMaterialModel implements UnbakedModel, ResolvableModel {
 				layerState.setLocalTransform(transformation);
 				properties.applyToLayer(layerState, itemDisplayContext);
 				layerState.setItemTransform(ITEM_TRANSFORMS.getTransform(itemDisplayContext));
-				layerState.prepareQuadList().addAll(model.baseQuads.getAll());
+				layerState.setQuads(ItemQuads.split(model.baseQuads.getAll()));
 			});
 		}
 

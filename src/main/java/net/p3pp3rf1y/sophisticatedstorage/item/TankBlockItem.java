@@ -8,6 +8,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Prediction;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
@@ -136,7 +137,7 @@ public class TankBlockItem extends BlockItem {
 		} else {
 			stack.shrink(1);
 			if (!player.getInventory().add(single) && !single.isEmpty()) {
-				player.drop(single, false);
+				player.drop(single, false, Prediction.PREDICTED);
 			}
 		}
 		return InteractionResult.SUCCESS;
