@@ -19,7 +19,9 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "sophisticatedstorage:advanced_pump_upgrade"
+        "recipes": [
+          "sophisticatedstorage:advanced_pump_upgrade"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     }

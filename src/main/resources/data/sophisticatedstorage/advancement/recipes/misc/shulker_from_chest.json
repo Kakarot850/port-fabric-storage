@@ -19,7 +19,9 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "sophisticatedstorage:shulker_from_chest"
+        "recipes": [
+          "sophisticatedstorage:shulker_from_chest"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     }

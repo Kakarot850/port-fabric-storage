@@ -19,7 +19,9 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "sophisticatedstorage:cherry_chest"
+        "recipes": [
+          "sophisticatedstorage:cherry_chest"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     }

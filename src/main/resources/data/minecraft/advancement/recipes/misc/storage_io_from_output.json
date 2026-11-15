@@ -19,7 +19,9 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "minecraft:storage_io_from_output"
+        "recipes": [
+          "minecraft:storage_io_from_output"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     }

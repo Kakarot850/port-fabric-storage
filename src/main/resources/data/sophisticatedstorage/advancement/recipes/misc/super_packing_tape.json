@@ -18,7 +18,9 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "sophisticatedstorage:super_packing_tape"
+        "recipes": [
+          "sophisticatedstorage:super_packing_tape"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     }

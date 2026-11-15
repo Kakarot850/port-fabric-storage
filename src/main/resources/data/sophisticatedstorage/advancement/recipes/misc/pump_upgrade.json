@@ -9,7 +9,9 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "sophisticatedstorage:pump_upgrade"
+        "recipes": [
+          "sophisticatedstorage:pump_upgrade"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     },

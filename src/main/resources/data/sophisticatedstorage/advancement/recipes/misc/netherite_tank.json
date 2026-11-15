@@ -19,7 +19,9 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "sophisticatedstorage:netherite_tank"
+        "recipes": [
+          "sophisticatedstorage:netherite_tank"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     }

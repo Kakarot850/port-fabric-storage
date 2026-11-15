@@ -13,7 +13,9 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "sophisticatedstorage:tank"
+        "recipes": [
+          "sophisticatedstorage:tank"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     }

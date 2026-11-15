@@ -19,7 +19,9 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "sophisticatedstorage:xp_pump_upgrade"
+        "recipes": [
+          "sophisticatedstorage:xp_pump_upgrade"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     }

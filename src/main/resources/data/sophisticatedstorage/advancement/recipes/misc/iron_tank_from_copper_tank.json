@@ -19,7 +19,9 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "sophisticatedstorage:iron_tank_from_copper_tank"
+        "recipes": [
+          "sophisticatedstorage:iron_tank_from_copper_tank"
+        ]
       },
       "trigger": "minecraft:recipe_unlocked"
     }
