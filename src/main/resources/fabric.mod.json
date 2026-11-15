@@ -19,6 +19,12 @@
     ],
     "client": [
       "net.p3pp3rf1y.sophisticatedstorage.client.SophisticatedStorageClient"
+    ],
+    "jei_mod_plugin": [
+      "net.p3pp3rf1y.sophisticatedstorage.compat.recipeviewers.jei.StorageJeiPlugin"
+    ],
+    "jade": [
+      "net.p3pp3rf1y.sophisticatedstorage.compat.jade.StorageJadePlugin"
     ]
   },
   "mixins": [

@@ -22,6 +22,28 @@ repositories {
 			includeGroup 'fuzs.forgeconfigapiport'
 		}
 	}
+	maven {
+		name = 'BlameJared'
+		url = 'https://maven.blamejared.com/'
+		content {
+			includeGroup 'mezz.jei'
+			includeGroup 'net.mezzdev.config'
+		}
+	}
+	maven {
+		name = 'TwelveIterations'
+		url = 'https://maven.twelveiterations.com/repository/maven-public/'
+		content {
+			includeGroup 'net.blay09.mods'
+		}
+	}
+	maven {
+		name = 'Modrinth'
+		url = 'https://api.modrinth.com/maven'
+		content {
+			includeGroup 'maven.modrinth'
+		}
+	}
 }
 
 loom {
@@ -51,6 +73,15 @@ dependencies {
 
 	// javax.annotation.* (ParametersAreNonnullByDefault, Nullable) used throughout ref-neoforge-storage.
 	compileOnly "com.google.code.findbugs:jsr305:${project.jsr305_version}"
+
+	// Compat (compileOnly - optional integrations)
+	compileOnly "mezz.jei:jei-${project.minecraft_version}-fabric:${project.jei_version}"
+	compileOnly("net.blay09.mods:balm-fabric:${project.balm_version}") { transitive = false }
+	compileOnly("net.blay09.mods:trashslot-fabric:${project.trashslot_version}") { transitive = false }
+	compileOnly("maven.modrinth:universal-sawmill:${project.sawmill_version}") { transitive = false }
+	compileOnly("maven.modrinth:moonlight:${project.moonlight_version}") { transitive = false }
+	compileOnly("maven.modrinth:jade:${project.jade_version}") { transitive = false }
+	compileOnly("maven.modrinth:toms-storage:${project.toms_storage_version}") { transitive = false }
 }
 
 processResources {

@@ -1,0 +1,168 @@
+package net.p3pp3rf1y.sophisticatedstorage.compat.recipeviewers.common;
+
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.*;
+import net.p3pp3rf1y.sophisticatedcore.compat.recipeviewers.common.ClientRecipeHelper;
+import net.p3pp3rf1y.sophisticatedcore.compat.recipeviewers.common.DyeVariantPair;
+import net.p3pp3rf1y.sophisticatedcore.compat.recipeviewers.common.SingleColorDyeRecipeSpec;
+import net.p3pp3rf1y.sophisticatedcore.compat.recipeviewers.common.subtypes.PropertyBasedSubtypeInterpreter;
+import net.p3pp3rf1y.sophisticatedstorage.SophisticatedStorage;
+import net.p3pp3rf1y.sophisticatedstorage.block.ITintableBlockItem;
+import net.p3pp3rf1y.sophisticatedstorage.block.StorageBlockBase;
+import net.p3pp3rf1y.sophisticatedstorage.block.WoodStorageBlockBase;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModBlocks;
+import net.p3pp3rf1y.sophisticatedstorage.item.WoodStorageBlockItem;
+import net.p3pp3rf1y.sophisticatedstorage.util.GenericWoodStorageHelper;
+
+import java.util.*;
+import java.util.function.Function;
+
+public class DyeRecipesMaker {
+	private DyeRecipesMaker() {
+	}
+
+	public static <T extends PropertyBasedSubtypeInterpreter> List<RecipeHolder<CraftingRecipe>> getMultipleColorsRecipes(
+			Function<ItemStack, Optional<T>> getSubtypeInterpreter) {
+		List<RecipeHolder<CraftingRecipe>> recipes = new ArrayList<>();
+
+		Map<Item, ItemStack[]> blocks = getDyeableItems();
+		addMultipleColorsRecipe(recipes, blocks, getSubtypeInterpreter);
+
+		return recipes;
+	}
+
+	public static <T extends PropertyBasedSubtypeInterpreter> List<SingleColorDyeRecipeSpec> getSingleColorRecipeSpecs(
+			Function<ItemStack, Optional<T>> getSubtypeInterpreter) {
+		return getSingleColorRecipeSpecs(getDyeableItems(), getSubtypeInterpreter);
+	}
+
+	private static Map<Item, ItemStack[]> getDyeableItems() {
+		Map<Item, ItemStack[]> blocks = new HashMap<>();
+		blocks.put(ModBlocks.BARREL_ITEM.get(), getWoodStorageStacks(ModBlocks.BARREL.get()));
+		blocks.put(ModBlocks.COPPER_BARREL_ITEM.get(), getWoodStorageStacks(ModBlocks.COPPER_BARREL.get()));
+		blocks.put(ModBlocks.IRON_BARREL_ITEM.get(), getWoodStorageStacks(ModBlocks.IRON_BARREL.get()));
+		blocks.put(ModBlocks.GOLD_BARREL_ITEM.get(), getWoodStorageStacks(ModBlocks.GOLD_BARREL.get()));
+		blocks.put(ModBlocks.DIAMOND_BARREL_ITEM.get(), getWoodStorageStacks(ModBlocks.DIAMOND_BARREL.get()));
+		blocks.put(ModBlocks.NETHERITE_BARREL_ITEM.get(), getWoodStorageStacks(ModBlocks.NETHERITE_BARREL.get()));
+		blocks.put(ModBlocks.CHEST_ITEM.get(), getWoodStorageStacks(ModBlocks.CHEST.get()));
+		blocks.put(ModBlocks.COPPER_CHEST_ITEM.get(), getWoodStorageStacks(ModBlocks.COPPER_CHEST.get()));
+		blocks.put(ModBlocks.IRON_CHEST_ITEM.get(), getWoodStorageStacks(ModBlocks.IRON_CHEST.get()));
+		blocks.put(ModBlocks.GOLD_CHEST_ITEM.get(), getWoodStorageStacks(ModBlocks.GOLD_CHEST.get()));
+		blocks.put(ModBlocks.DIAMOND_CHEST_ITEM.get(), getWoodStorageStacks(ModBlocks.DIAMOND_CHEST.get()));
+		blocks.put(ModBlocks.NETHERITE_CHEST_ITEM.get(), getWoodStorageStacks(ModBlocks.NETHERITE_CHEST.get()));
+		blocks.put(ModBlocks.SHULKER_BOX_ITEM.get(), new ItemStack[]{new ItemStack(ModBlocks.SHULKER_BOX_ITEM.get())});
+		blocks.put(ModBlocks.COPPER_SHULKER_BOX_ITEM.get(), new ItemStack[]{new ItemStack(ModBlocks.COPPER_SHULKER_BOX_ITEM.get())});
+		blocks.put(ModBlocks.IRON_SHULKER_BOX_ITEM.get(), new ItemStack[]{new ItemStack(ModBlocks.IRON_SHULKER_BOX_ITEM.get())});
+		blocks.put(ModBlocks.GOLD_SHULKER_BOX_ITEM.get(), new ItemStack[]{new ItemStack(ModBlocks.GOLD_SHULKER_BOX_ITEM.get())});
+		blocks.put(ModBlocks.DIAMOND_SHULKER_BOX_ITEM.get(), new ItemStack[]{new ItemStack(ModBlocks.DIAMOND_SHULKER_BOX_ITEM.get())});
+		blocks.put(ModBlocks.NETHERITE_SHULKER_BOX_ITEM.get(), new ItemStack[]{new ItemStack(ModBlocks.NETHERITE_SHULKER_BOX_ITEM.get())});
+		blocks.put(ModBlocks.LIMITED_BARREL_1_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_BARREL_1.get()));
+		blocks.put(ModBlocks.LIMITED_COPPER_BARREL_1_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_COPPER_BARREL_1.get()));
+		blocks.put(ModBlocks.LIMITED_IRON_BARREL_1_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_IRON_BARREL_1.get()));
+		blocks.put(ModBlocks.LIMITED_GOLD_BARREL_1_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_GOLD_BARREL_1.get()));
+		blocks.put(ModBlocks.LIMITED_DIAMOND_BARREL_1_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_DIAMOND_BARREL_1.get()));
+		blocks.put(ModBlocks.LIMITED_NETHERITE_BARREL_1_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_NETHERITE_BARREL_1.get()));
+		blocks.put(ModBlocks.LIMITED_BARREL_2_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_BARREL_2.get()));
+		blocks.put(ModBlocks.LIMITED_COPPER_BARREL_2_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_COPPER_BARREL_2.get()));
+		blocks.put(ModBlocks.LIMITED_IRON_BARREL_2_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_IRON_BARREL_2.get()));
+		blocks.put(ModBlocks.LIMITED_GOLD_BARREL_2_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_GOLD_BARREL_2.get()));
+		blocks.put(ModBlocks.LIMITED_DIAMOND_BARREL_2_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_DIAMOND_BARREL_2.get()));
+		blocks.put(ModBlocks.LIMITED_NETHERITE_BARREL_2_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_NETHERITE_BARREL_2.get()));
+		blocks.put(ModBlocks.LIMITED_BARREL_3_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_BARREL_3.get()));
+		blocks.put(ModBlocks.LIMITED_COPPER_BARREL_3_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_COPPER_BARREL_3.get()));
+		blocks.put(ModBlocks.LIMITED_IRON_BARREL_3_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_IRON_BARREL_3.get()));
+		blocks.put(ModBlocks.LIMITED_GOLD_BARREL_3_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_GOLD_BARREL_3.get()));
+		blocks.put(ModBlocks.LIMITED_DIAMOND_BARREL_3_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_DIAMOND_BARREL_3.get()));
+		blocks.put(ModBlocks.LIMITED_NETHERITE_BARREL_3_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_NETHERITE_BARREL_3.get()));
+		blocks.put(ModBlocks.LIMITED_BARREL_4_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_BARREL_4.get()));
+		blocks.put(ModBlocks.LIMITED_COPPER_BARREL_4_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_COPPER_BARREL_4.get()));
+		blocks.put(ModBlocks.LIMITED_IRON_BARREL_4_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_IRON_BARREL_4.get()));
+		blocks.put(ModBlocks.LIMITED_GOLD_BARREL_4_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_GOLD_BARREL_4.get()));
+		blocks.put(ModBlocks.LIMITED_DIAMOND_BARREL_4_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_DIAMOND_BARREL_4.get()));
+		blocks.put(ModBlocks.LIMITED_NETHERITE_BARREL_4_ITEM.get(), getWoodStorageStacks(ModBlocks.LIMITED_NETHERITE_BARREL_4.get()));
+		return blocks;
+	}
+
+	private static ItemStack[] getWoodStorageStacks(StorageBlockBase woodStorageBlock) {
+		return getWoodStorageStackList(woodStorageBlock).toArray(new ItemStack[0]);
+	}
+
+	static List<ItemStack> getWoodStorageStackList(StorageBlockBase woodStorageBlock) {
+		Set<ItemStack> ret = new LinkedHashSet<>();
+		WoodStorageBlockBase.CUSTOM_TEXTURE_WOOD_TYPES.keySet()
+				.forEach(woodType -> ret.add(WoodStorageBlockItem.setWoodType(new ItemStack(woodStorageBlock), woodType)));
+		GenericWoodStorageHelper.getEnabledGenericWoodTypes()
+				.forEach(woodType -> ret.add(WoodStorageBlockItem.setWoodType(new ItemStack(woodStorageBlock), woodType)));
+		return List.copyOf(ret);
+	}
+
+	private static <T extends PropertyBasedSubtypeInterpreter> void addMultipleColorsRecipe(List<RecipeHolder<CraftingRecipe>> recipes,
+			Map<Item, ItemStack[]> items, Function<ItemStack, Optional<T>> getSubtypeInterpreter) {
+		items.forEach((block, stacks) -> {
+			NonNullList<Ingredient> ingredients = NonNullList.create();
+			ingredients.add(Ingredient.of(Items.YELLOW_DYE));
+			ingredients.add(Ingredient.of(Arrays.stream(stacks).map(ItemStack::getItem)));
+			ingredients.add(Ingredient.of(Items.LIME_DYE));
+
+			ItemStack result = new ItemStack(block);
+			if (result.getItem() instanceof ITintableBlockItem tintableBlockItem) {
+				tintableBlockItem.setMainColor(result, DyeColor.YELLOW.getTextureDiffuseColor());
+				tintableBlockItem.setAccentColor(result, DyeColor.LIME.getTextureDiffuseColor());
+			}
+			Identifier id = Identifier.fromNamespaceAndPath(SophisticatedStorage.MOD_ID,
+					getSubtypeInterpreter.apply(result).map(i -> i.getRegistrySanitizedItemString(result)).orElse("multiple_color"));
+			ShapedRecipePattern pattern = new ShapedRecipePattern(3, 1, ingredients.stream().map(Optional::of).toList(), Optional.empty());
+			recipes.add(new RecipeHolder<>(ClientRecipeHelper.recipeKey(id), new ShapedRecipe(new Recipe.CommonInfo(true),
+					new CraftingRecipe.CraftingBookInfo(CraftingBookCategory.MISC, ""), pattern, ItemStackTemplate.fromNonEmptyStack(result))));
+		});
+	}
+
+	private static <T extends PropertyBasedSubtypeInterpreter> List<SingleColorDyeRecipeSpec> getSingleColorRecipeSpecs(Map<Item, ItemStack[]> items,
+			Function<ItemStack, Optional<T>> getSubtypeInterpreter) {
+		List<SingleColorDyeRecipeSpec> recipes = new ArrayList<>();
+		items.forEach((block, stacks) -> {
+			List<DyeVariantPair> variants = new ArrayList<>();
+			for (DyeColor color : DyeColor.values()) {
+				ItemStack result = new ItemStack(block);
+				if (result.getItem() instanceof ITintableBlockItem tintableBlockItem) {
+					tintableBlockItem.setMainColor(result, color.getTextureDiffuseColor());
+					tintableBlockItem.setAccentColor(result, color.getTextureDiffuseColor());
+				}
+				variants.add(new DyeVariantPair(new ItemStack(dyeItem(color)), result));
+			}
+			ItemStack idStack = variants.getFirst().result();
+			Identifier id = Identifier.fromNamespaceAndPath(SophisticatedStorage.MOD_ID, getSubtypeInterpreter.apply(idStack)
+					.map(i -> i.getRegistrySanitizedItemString(idStack)).orElse("single_color_" + BuiltInRegistries.ITEM.getKey(block).getPath()));
+			recipes.add(new SingleColorDyeRecipeSpec(id.withSuffix("_grouped"), List.of(stacks), variants));
+		});
+		return recipes;
+	}
+
+	private static Item dyeItem(DyeColor color) {
+		return switch (color) {
+			case WHITE -> Items.WHITE_DYE;
+			case ORANGE -> Items.ORANGE_DYE;
+			case MAGENTA -> Items.MAGENTA_DYE;
+			case LIGHT_BLUE -> Items.LIGHT_BLUE_DYE;
+			case YELLOW -> Items.YELLOW_DYE;
+			case LIME -> Items.LIME_DYE;
+			case PINK -> Items.PINK_DYE;
+			case GRAY -> Items.GRAY_DYE;
+			case LIGHT_GRAY -> Items.LIGHT_GRAY_DYE;
+			case CYAN -> Items.CYAN_DYE;
+			case PURPLE -> Items.PURPLE_DYE;
+			case BLUE -> Items.BLUE_DYE;
+			case BROWN -> Items.BROWN_DYE;
+			case GREEN -> Items.GREEN_DYE;
+			case RED -> Items.RED_DYE;
+			case BLACK -> Items.BLACK_DYE;
+		};
+	}
+}

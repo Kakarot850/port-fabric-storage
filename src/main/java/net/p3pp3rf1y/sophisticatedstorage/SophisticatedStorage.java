@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
+import net.p3pp3rf1y.sophisticatedcore.compat.CompatRegistry;
 import net.p3pp3rf1y.sophisticatedcore.linkedstorage.LinkedStorageEndpointAdapters;
 import net.p3pp3rf1y.sophisticatedcore.linkedstorage.LinkedStorageHostFactories;
 import net.p3pp3rf1y.sophisticatedstorage.block.StorageItemLinkedStorageEndpointAdapter;
@@ -15,6 +16,7 @@ import net.p3pp3rf1y.sophisticatedstorage.block.TankItemLinkedStorageEndpointAda
 import net.p3pp3rf1y.sophisticatedstorage.block.TankLinkedStorageHostWrapper;
 import net.p3pp3rf1y.sophisticatedstorage.common.CommonEventHandler;
 import net.p3pp3rf1y.sophisticatedstorage.init.ModBlocks;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModCompat;
 import net.p3pp3rf1y.sophisticatedstorage.init.ModDataComponents;
 import net.p3pp3rf1y.sophisticatedstorage.init.ModItems;
 import net.p3pp3rf1y.sophisticatedstorage.init.ModParticles;
@@ -41,6 +43,8 @@ public class SophisticatedStorage implements ModInitializer {
 		ConfigRegistry.INSTANCE.register(MOD_ID, ModConfig.Type.COMMON, Config.COMMON_SPEC);
 		Config.SERVER.initListeners();
 		commonEventHandler.registerHandlers();
+		ModCompat.register();
+		CompatRegistry.getRegistry(MOD_ID).initCompats();
 		ModDataComponents.register();
 		ModBlocks.registerHandlers();
 		ModItems.registerHandlers();
@@ -52,6 +56,7 @@ public class SophisticatedStorage implements ModInitializer {
 		LinkedStorageEndpointAdapters.register(new TankItemLinkedStorageEndpointAdapter());
 		ModBlocks.registerDispenseBehavior();
 		ModBlocks.registerCauldronInteractions();
+		CompatRegistry.getRegistry(MOD_ID).setupCompats();
 		ServerChunkEvents.CHUNK_LOAD.register((serverLevel, chunk, generated) -> serverLevel.sophisticatedStorage_invalidateCapabilities(chunk.getPos()));
 		ServerChunkEvents.CHUNK_UNLOAD.register((serverLevel, chunk) -> serverLevel.sophisticatedStorage_invalidateCapabilities(chunk.getPos()));
 		ServerTickEvents.END_LEVEL_TICK.register(serverLevel -> serverLevel.sophisticatedStorage_cleanCapabilityListenerReferences());
