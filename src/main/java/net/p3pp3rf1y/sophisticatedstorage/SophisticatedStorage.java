@@ -7,6 +7,13 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
+import net.p3pp3rf1y.sophisticatedcore.linkedstorage.LinkedStorageEndpointAdapters;
+import net.p3pp3rf1y.sophisticatedcore.linkedstorage.LinkedStorageHostFactories;
+import net.p3pp3rf1y.sophisticatedstorage.block.StorageItemLinkedStorageEndpointAdapter;
+import net.p3pp3rf1y.sophisticatedstorage.block.StorageLinkedStorageHostWrapper;
+import net.p3pp3rf1y.sophisticatedstorage.block.TankItemLinkedStorageEndpointAdapter;
+import net.p3pp3rf1y.sophisticatedstorage.block.TankLinkedStorageHostWrapper;
+import net.p3pp3rf1y.sophisticatedstorage.common.CommonEventHandler;
 import net.p3pp3rf1y.sophisticatedstorage.init.ModBlocks;
 import net.p3pp3rf1y.sophisticatedstorage.init.ModDataComponents;
 import net.p3pp3rf1y.sophisticatedstorage.init.ModItems;
@@ -17,12 +24,12 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * Fabric common entrypoint (replaces NeoForge's {@code @Mod} constructor).
- * Registries, events, and networking are wired in as their subsystems are ported.
  */
 public class SophisticatedStorage implements ModInitializer {
 	public static final String MOD_ID = "sophisticatedstorage";
 	public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 	private static String networkProtocolVersion = "1";
+	private final CommonEventHandler commonEventHandler = new CommonEventHandler();
 
 	@Override
 	public void onInitialize() {
@@ -33,11 +40,18 @@ public class SophisticatedStorage implements ModInitializer {
 		ConfigRegistry.INSTANCE.register(MOD_ID, ModConfig.Type.CLIENT, Config.CLIENT_SPEC);
 		ConfigRegistry.INSTANCE.register(MOD_ID, ModConfig.Type.COMMON, Config.COMMON_SPEC);
 		Config.SERVER.initListeners();
+		commonEventHandler.registerHandlers();
 		ModDataComponents.register();
 		ModBlocks.registerHandlers();
 		ModItems.registerHandlers();
 		ModParticles.registerParticles();
 		ModPayloads.registerPayloads();
+		LinkedStorageHostFactories.register(StorageLinkedStorageHostWrapper.FACTORY_ID, StorageLinkedStorageHostWrapper::create);
+		LinkedStorageEndpointAdapters.register(new StorageItemLinkedStorageEndpointAdapter());
+		LinkedStorageHostFactories.register(TankLinkedStorageHostWrapper.FACTORY_ID, TankLinkedStorageHostWrapper::create);
+		LinkedStorageEndpointAdapters.register(new TankItemLinkedStorageEndpointAdapter());
+		ModBlocks.registerDispenseBehavior();
+		ModBlocks.registerCauldronInteractions();
 		ServerChunkEvents.CHUNK_LOAD.register((serverLevel, chunk, generated) -> serverLevel.sophisticatedStorage_invalidateCapabilities(chunk.getPos()));
 		ServerChunkEvents.CHUNK_UNLOAD.register((serverLevel, chunk) -> serverLevel.sophisticatedStorage_invalidateCapabilities(chunk.getPos()));
 		ServerTickEvents.END_LEVEL_TICK.register(serverLevel -> serverLevel.sophisticatedStorage_cleanCapabilityListenerReferences());

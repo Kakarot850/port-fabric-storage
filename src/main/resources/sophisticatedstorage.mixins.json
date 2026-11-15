@@ -11,7 +11,10 @@
     "common.ServerLevelMixin"
   ],
   "client": [
-    "client.GuiMixin"
+    "client.ClientLevelMixin",
+    "client.GuiMixin",
+    "client.ModelDiscoveryMixin",
+    "client.MouseHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

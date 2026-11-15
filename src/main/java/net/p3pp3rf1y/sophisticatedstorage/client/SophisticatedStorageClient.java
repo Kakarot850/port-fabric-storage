@@ -7,8 +7,7 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.p3pp3rf1y.sophisticatedstorage.SophisticatedStorage;
 
 /**
- * Fabric client entrypoint.
- * Client handlers and renderers are ported in later slices.
+ * Fabric client entrypoint (replaces NeoForge's {@code Dist.CLIENT} branch of the {@code @Mod} constructor).
  */
 public class SophisticatedStorageClient implements ClientModInitializer {
 	@Override
@@ -16,5 +15,6 @@ public class SophisticatedStorageClient implements ClientModInitializer {
 		if (!FabricLoader.getInstance().isModLoaded("configured")) {
 			ConfigScreenFactoryRegistry.INSTANCE.register(SophisticatedStorage.MOD_ID, ConfigurationScreen::new);
 		}
+		ClientEventHandler.registerHandlers();
 	}
 }

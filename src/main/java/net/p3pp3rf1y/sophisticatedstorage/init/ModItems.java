@@ -289,7 +289,6 @@ public class ModItems {
 		ResourceConditions.register(DROP_PACKED_DISABLED_CONDITION);
 		ModDataComponents.register();
 		registerContainers();
-		// TODO(port): Slice 5 - if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) { ModItemsClient.init(); }
 	}
 
 	public static final ResourceConditionType<DropPackedDisabledCondition> DROP_PACKED_DISABLED_CONDITION = DropPackedDisabledCondition.TYPE;

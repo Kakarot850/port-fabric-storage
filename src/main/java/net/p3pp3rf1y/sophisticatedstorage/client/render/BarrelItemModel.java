@@ -1,0 +1,161 @@
+package net.p3pp3rf1y.sophisticatedstorage.client.render;
+
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableMap;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.client.color.item.ItemTintSource;
+import net.minecraft.client.color.item.ItemTintSources;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.dispatch.BlockModelRotation;
+import net.minecraft.client.renderer.item.CuboidItemModelWrapper;
+import net.minecraft.client.renderer.item.ItemModel;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.resources.model.ResolvedModel;
+import net.minecraft.client.resources.model.cuboid.ItemTransform;
+import net.minecraft.client.resources.model.cuboid.ItemTransforms;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.ItemOwner;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.properties.WoodType;
+import net.p3pp3rf1y.sophisticatedstorage.block.BarrelMaterial;
+import net.p3pp3rf1y.sophisticatedstorage.item.BarrelBlockItem;
+import net.p3pp3rf1y.sophisticatedstorage.item.StorageBlockItem;
+import net.p3pp3rf1y.sophisticatedstorage.item.WoodStorageBlockItem;
+import net.p3pp3rf1y.sophisticatedstorage.util.GenericWoodStorageHelper;
+import org.joml.Vector3f;
+import org.joml.Vector3fc;
+import org.jspecify.annotations.Nullable;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+public record BarrelItemModel(BarrelBlockStateModelBase model, @Nullable BarrelBlockStateModelBase flatTopModel, List<ItemTintSource> tints,
+		Supplier<Vector3fc[]> extents) implements ItemModel {
+	private static final ItemTransforms ITEM_TRANSFORMS = createItemTransforms();
+
+	private static ItemTransforms createItemTransforms() {
+		return new ItemTransforms(
+				new ItemTransform(new Vector3f(75, 45, 0), new Vector3f(0, 2.5f / 16f, 0), new Vector3f(0.375f, 0.375f, 0.375f)),
+				new ItemTransform(new Vector3f(75, 45, 0), new Vector3f(0, 2.5f / 16f, 0), new Vector3f(0.375f, 0.375f, 0.375f)),
+				new ItemTransform(new Vector3f(0, 225, 0), new Vector3f(0, 0, 0), new Vector3f(0.4f, 0.4f, 0.4f)),
+				new ItemTransform(new Vector3f(0, 45, 0), new Vector3f(0, 0, 0), new Vector3f(0.4f, 0.4f, 0.4f)),
+				new ItemTransform(new Vector3f(0, 0, 0), new Vector3f(0, 14.25f / 16f, 0), new Vector3f(1, 1, 1)),
+				new ItemTransform(new Vector3f(30, 225, 0), new Vector3f(0, 0, 0), new Vector3f(0.625f, 0.625f, 0.625f)),
+				new ItemTransform(new Vector3f(0, 0, 0), new Vector3f(0, 3 / 16f, 0), new Vector3f(0.25f, 0.25f, 0.25f)),
+				new ItemTransform(new Vector3f(0, 0, 0), new Vector3f(0, 0, 0), new Vector3f(0.5f, 0.5f, 0.5f)),
+				new ItemTransform(new Vector3f(0, 0, 0), new Vector3f(0, 0, 0), new Vector3f(1f, 1f, 1f)));
+	}
+
+	public BarrelItemModel(BarrelBlockStateModelBase model, @Nullable BarrelBlockStateModelBase flatTopModel, List<ItemTintSource> tints) {
+		this(model, flatTopModel, tints, Suppliers.memoize(() -> CuboidItemModelWrapper.computeExtents(model.getTierQuads().getAll())));
+	}
+
+	@Override
+	public void update(ItemStackRenderState state, ItemStack stack, ItemModelResolver itemModelResolver, ItemDisplayContext itemDisplayContext,
+			@Nullable ClientLevel clientLevel, @Nullable ItemOwner itemOwner, int i) {
+		state.appendModelIdentityElement(this);
+		boolean flatTop = BarrelBlockItem.isFlatTop(stack);
+		BarrelBlockStateModelBase updatedModel = flatTop && flatTopModel != null ? flatTopModel : model;
+		updatedModel.setFlatTop(flatTop);
+		state.appendModelIdentityElement(flatTop);
+
+		Optional<WoodType> woodType = WoodStorageBlockItem.getWoodType(stack);
+		boolean isGenericWood = woodType.map(GenericWoodStorageHelper::isGenericWood).orElse(false);
+		boolean hasMainColor = StorageBlockItem.getMainColorFromComponentHolder(stack).isPresent() || isGenericWood;
+		updatedModel.setHasMainColor(hasMainColor);
+		state.appendModelIdentityElement(hasMainColor);
+
+		boolean hasAccentColor = StorageBlockItem.getAccentColorFromComponentHolder(stack).isPresent() || isGenericWood;
+		updatedModel.setHasAccentColor(hasAccentColor);
+		state.appendModelIdentityElement(hasAccentColor);
+
+		Map<BarrelMaterial, Identifier> materials = BarrelBlockItem.getMaterials(stack);
+		updatedModel.setBarrelMaterials(materials);
+		state.appendModelIdentityElement(materials);
+
+		String woodName = isGenericWood
+				? null
+				: woodType.map(WoodType::name).orElse(hasMainColor && hasAccentColor && materials.isEmpty() ? null : WoodType.ACACIA.name());
+		updatedModel.setWoodName(woodName);
+		if (woodName != null) {
+			state.appendModelIdentityElement(woodName);
+		}
+
+		boolean packed = WoodStorageBlockItem.isPacked(stack);
+		updatedModel.setPacked(packed);
+		state.appendModelIdentityElement(packed);
+
+		boolean showsTier = StorageBlockItem.showsTier(stack);
+		updatedModel.setShowsTier(showsTier);
+		state.appendModelIdentityElement(showsTier);
+
+		updatedModel.setBarrelItem(stack.getItem());
+		state.appendModelIdentityElement(stack.getItem());
+
+		ItemStackRenderState.LayerRenderState layerState = state.newLayer();
+		RandomSource rand = clientLevel != null ? clientLevel.getRandom() : RandomSource.create();
+
+		for (int j = 0; j < tints.size(); ++j) {
+			int tint = tints.get(j).calculate(stack, clientLevel, itemOwner == null ? null : itemOwner.asLivingEntity());
+			layerState.tintLayers().add(tint);
+			state.appendModelIdentityElement(tint);
+		}
+
+		layerState.setUsesBlockLight(true);
+		layerState.setParticleMaterial(updatedModel.particleMaterial());
+		layerState.setItemTransform(ITEM_TRANSFORMS.getTransform(itemDisplayContext));
+		updatedModel.emitItemQuads(rand, layerState.emitter());
+	}
+
+	public record Unbaked(Identifier model, @Nullable Identifier flatTopModel, List<ItemTintSource> tints) implements ItemModel.Unbaked {
+		public static final MapCodec<Unbaked> MAP_CODEC = RecordCodecBuilder.mapCodec(instance -> instance
+				.group(Identifier.CODEC.fieldOf("model").forGetter(Unbaked::model),
+						Identifier.CODEC.optionalFieldOf("flat_top_model").forGetter(unbaked -> Optional.ofNullable(unbaked.flatTopModel())),
+						ItemTintSources.CODEC.listOf().optionalFieldOf("tints", List.of()).forGetter(Unbaked::tints))
+				.apply(instance, (model, flatTopModel, tints) -> new Unbaked(model, flatTopModel.orElse(null), tints)));
+
+		@Override
+		public MapCodec<? extends ItemModel.Unbaked> type() {
+			return MAP_CODEC;
+		}
+
+		@Override
+		public ItemModel bake(BakingContext context, org.joml.Matrix4fc transformation) {
+			ResolvedModel resolved = context.blockModelBaker().getModel(model);
+			BarrelBlockStateModelBase barrelModel;
+			if (resolved.wrapped() instanceof BarrelUnbakedModelBase barrelUnbakedModel) {
+				barrelModel = barrelUnbakedModel.bakeBlockStateModel(context.blockModelBaker(), resolved, BlockModelRotation.IDENTITY);
+			} else {
+				throw new IllegalStateException("Expected BarrelUnbakedModelBase for " + model + ", got " + resolved.wrapped().getClass().getName());
+			}
+
+			BarrelBlockStateModelBase barrelFlatTopModel = null;
+			if (flatTopModel != null) {
+				ResolvedModel flatTopResolved = context.blockModelBaker().getModel(flatTopModel);
+				if (flatTopResolved.wrapped() instanceof BarrelUnbakedModelBase flatTopUnbakedModel) {
+					barrelFlatTopModel = flatTopUnbakedModel.bakeBlockStateModel(context.blockModelBaker(), flatTopResolved, BlockModelRotation.IDENTITY);
+				}
+			}
+
+			return new BarrelItemModel(barrelModel, barrelFlatTopModel, tints);
+		}
+
+		@Override
+		public void resolveDependencies(Resolver resolver) {
+			resolver.markDependency(model);
+			if (flatTopModel != null) {
+				resolver.markDependency(flatTopModel);
+			}
+		}
+
+		public List<ItemTintSource> tints() {
+			return tints;
+		}
+	}
+}

@@ -1,0 +1,176 @@
+package net.p3pp3rf1y.sophisticatedstorage.client.render;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.fabricmc.fabric.api.client.renderer.v1.Renderer;
+import net.fabricmc.fabric.api.client.renderer.v1.mesh.MutableMesh;
+import net.fabricmc.fabric.api.client.renderer.v1.sprite.SpriteFinder;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
+import org.jspecify.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+public class RenderHelper {
+	public static final CameraRenderState ZERO_POS_CAMERA_RENDER_STATE = new CameraRenderState();
+
+	private RenderHelper() {
+	}
+
+	private static final Cache<Integer, List<SpriteData>> SPRITE_CACHE = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.MINUTES).build();
+
+	public static TextureAtlasSprite getSprite(Identifier blockName, @Nullable Direction direction, RandomSource rand) {
+		return getSpriteData(blockName, direction, rand).sprite();
+	}
+
+	public static SpriteData getSpriteData(Identifier blockName, @Nullable Direction direction, RandomSource rand) {
+		return getSpriteDataList(blockName, direction, rand).getFirst();
+	}
+
+	public static List<SpriteData> getSpriteDataList(Identifier blockName, @Nullable Direction direction, RandomSource rand) {
+		int hash = blockName.hashCode();
+		hash = hash * 31 + (direction == null ? 0 : direction.hashCode());
+
+		List<SpriteData> spriteData = SPRITE_CACHE.getIfPresent(hash);
+		if (spriteData == null) {
+			spriteData = parseSpriteData(blockName, direction, rand);
+			SPRITE_CACHE.put(hash, spriteData);
+		}
+		return spriteData;
+	}
+
+	private static List<SpriteData> parseSpriteData(Identifier blockName, @Nullable Direction direction, RandomSource rand) {
+		BlockState blockState = getDefaultBlockState(blockName);
+
+		List<SpriteData> spriteData = parseSpriteFromModel(blockState, direction, rand);
+
+		if (spriteData.isEmpty()) {
+			spriteData = List.of(new SpriteData(
+					Minecraft.getInstance().getModelManager().getBlockStateModelSet().getParticleMaterial(Blocks.AIR.defaultBlockState()).sprite(), -1, false));
+		}
+
+		return spriteData;
+	}
+
+	@SuppressWarnings("java:S1874")
+	// need to call deprecated getQuads here as well just in case it was overriden by mods instead of the main one
+	private static List<SpriteData> parseSpriteFromModel(BlockState blockState, @Nullable Direction direction, RandomSource rand) {
+		List<SpriteData> spriteData = new ArrayList<>();
+		@Nullable
+		SpriteData fallbackSpriteData = null;
+
+		BlockStateModel blockModel = Minecraft.getInstance().getModelManager().getBlockStateModelSet().get(blockState);
+		ClientLevel level = Minecraft.getInstance().level;
+		if (level == null) {
+			return spriteData;
+		}
+
+		try {
+			SpriteFinder spriteFinder = FabricModelHelper.getBlocksSpriteFinder();
+			MutableMesh mesh = Renderer.get().mutableMesh();
+			blockModel.emitQuads(mesh.emitter(), level, BlockPos.ZERO, blockState, rand, d -> false);
+			List<SpriteData> unculledMatched = new ArrayList<>();
+			SpriteData[] fallback = new SpriteData[1];
+			mesh.forEach(quad -> {
+				SpriteData data = new SpriteData(spriteFinder.find(quad), quad.tintIndex(), quad.chunkLayer().translucent());
+				if (quad.cullFace() == direction && direction != null) {
+					spriteData.add(data);
+				} else if (quad.cullFace() == null) {
+					if (fallback[0] == null) {
+						fallback[0] = data;
+					}
+					if (quad.lightFace() == direction) {
+						unculledMatched.add(data);
+					}
+				}
+			});
+			if (spriteData.isEmpty()) {
+				spriteData.addAll(unculledMatched);
+			}
+			fallbackSpriteData = fallback[0];
+		} catch (Exception e) {
+			// NO OP
+		}
+
+		if (spriteData.isEmpty() && fallbackSpriteData != null) {
+			spriteData.add(fallbackSpriteData);
+		}
+
+		if (spriteData.isEmpty()) {
+			try {
+				spriteData.add(new SpriteData(blockModel.particleMaterial(level, BlockPos.ZERO, blockState).sprite(), -1, false));
+			} catch (Exception e) {
+				// NO OP
+			}
+		}
+
+		return List.copyOf(spriteData);
+	}
+
+	private static void addSpriteData(List<SpriteData> spriteData, List<BakedQuad> quads) {
+		for (BakedQuad quad : quads) {
+			spriteData.add(getSpriteData(quad));
+		}
+	}
+
+	private static SpriteData getSpriteData(BakedQuad quad) {
+		return new SpriteData(quad.materialInfo().sprite(), quad.materialInfo().tintIndex(), quad.materialInfo().layer().translucent());
+	}
+
+	public record SpriteData(TextureAtlasSprite sprite, int tintIndex, boolean translucent) {
+	}
+
+	private static BlockState getDefaultBlockState(Identifier blockName) {
+		return BuiltInRegistries.BLOCK.getOptional(blockName).map(Block::defaultBlockState).orElse(Blocks.AIR.defaultBlockState());
+	}
+
+	static void renderQuad(VertexConsumer consumer, Matrix4f pose, Vector3f normal, int packedOverlay, int packedLight, float alpha,
+			TextureAtlasSprite sprite) {
+		renderQuad(consumer, pose, normal, packedOverlay, packedLight, alpha, 0, 0, 1, 1, sprite);
+	}
+
+	static void renderQuad(VertexConsumer consumer, Matrix4f pose, Vector3f normal, int packedOverlay, int packedLight, float alpha, float minU, float minV,
+			float maxU, float maxV, TextureAtlasSprite sprite) {
+		VertexConsumer spriteConsumer = sprite.wrap(consumer);
+		int minX = 0;
+		int minY = 0;
+		int maxY = 1;
+		int maxX = 1;
+
+		addVertex(pose, normal, spriteConsumer, maxY, minX, packedOverlay, packedLight, maxU, minV, alpha);
+		addVertex(pose, normal, spriteConsumer, minY, minX, packedOverlay, packedLight, maxU, maxV, alpha);
+		addVertex(pose, normal, spriteConsumer, minY, maxX, packedOverlay, packedLight, minU, maxV, alpha);
+		addVertex(pose, normal, spriteConsumer, maxY, maxX, packedOverlay, packedLight, minU, minV, alpha);
+	}
+
+	private static void addVertex(Matrix4f pose, Vector3f normal, VertexConsumer consumer, int pY, float pX, int packedOverlay, int packedLight, float u,
+			float v, float alpha) {
+		Vector4f pos = new Vector4f(pX, pY, 0, 1.0F);
+		pose.transform(pos);
+		int color = ((int) (alpha * 255)) << 24 | 255 << 16 | 255 << 8 | 255;
+		consumer.addVertex(pos.x(), pos.y(), pos.z(), color, u, v, packedOverlay, packedLight, normal.x(), normal.y(), normal.z());
+	}
+
+	public static boolean isSpecialRenderer(ItemStackRenderState renderState) {
+		return false;
+	}
+}

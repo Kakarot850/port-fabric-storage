@@ -462,7 +462,6 @@ public class ModBlocks {
 		RECIPE_SERIALIZERS.register();
 		CustomIngredientSerializer.register(BASE_TIER_WOODEN_STORAGE_INGREDIENT_TYPE);
 		registerCapabilities(new RegisterCapabilitiesEvent());
-		// TODO(port): Slice 5 - if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) { ModBlocksClient.init(); }
 	}
 
 	private static void registerCapabilities(RegisterCapabilitiesEvent event) {

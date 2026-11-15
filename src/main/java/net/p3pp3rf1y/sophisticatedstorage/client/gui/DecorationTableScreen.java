@@ -1,0 +1,920 @@
+
+package net.p3pp3rf1y.sophisticatedstorage.client.gui;
+
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.item.TrackingItemStackRenderState;
+import net.minecraft.client.resources.model.cuboid.ItemTransform;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.Tuple;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.p3pp3rf1y.sophisticatedcore.fabric.client.network.ClientPacketDistributor;
+import net.p3pp3rf1y.sophisticatedcore.client.gui.controls.*;
+import net.p3pp3rf1y.sophisticatedcore.client.gui.utils.*;
+import net.p3pp3rf1y.sophisticatedcore.network.SyncContainerClientDataPayload;
+import net.p3pp3rf1y.sophisticatedcore.util.Easing;
+import net.p3pp3rf1y.sophisticatedstorage.SophisticatedStorage;
+import net.p3pp3rf1y.sophisticatedstorage.block.DecorationTableBlockEntity;
+import net.p3pp3rf1y.sophisticatedstorage.client.render.DecorationTablePreviewRenderState;
+import net.p3pp3rf1y.sophisticatedstorage.common.gui.DecorationTableInputSlotPreview;
+import net.p3pp3rf1y.sophisticatedstorage.common.gui.DecorationTableMenu;
+import net.p3pp3rf1y.sophisticatedstorage.init.ModItems;
+import net.p3pp3rf1y.sophisticatedstorage.util.DecorationHelper;
+import org.joml.Matrix3x2f;
+import org.joml.Matrix3x2fStack;
+import org.joml.Quaternionf;
+import org.jspecify.annotations.Nullable;
+
+import java.util.*;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.function.IntConsumer;
+import java.util.function.Supplier;
+
+public class DecorationTableScreen extends AbstractContainerScreen<DecorationTableMenu> {
+	public static final Identifier GUI_BACKGROUND = SophisticatedStorage.getIdentifier("textures/gui/decoration_table.png");
+	public static final Identifier GUI_DECORATION_TABLE_ELEMENTS = SophisticatedStorage.getIdentifier("textures/gui/decoration_table_elements.png");
+	public static final Dimension DECORATION_TABLE_ELEMENTS = new Dimension(128, 64);
+	public static final Dimension SQUARE_8 = new Dimension(8, 8);
+	private static final int DISABLED_TEXTURE_U_OFFSET = 64;
+	private static final long INPUT_SLOT_PREVIEW_ROTATION_INTERVAL_MS = 1_500;
+	public static final TextureBlitData TOP_INNER_TRIM_HIGHLIGHT = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(0, 0),
+			Dimension.SQUARE_16);
+	public static final TextureBlitData TOP_TRIM_HIGHLIGHT = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(0, 16),
+			Dimension.SQUARE_16);
+	public static final TextureBlitData SIDE_TRIM_HIGHLIGHT = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(0, 32),
+			Dimension.SQUARE_16);
+	public static final TextureBlitData BOTTOM_TRIM_HIGHLIGHT = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(0, 48),
+			Dimension.SQUARE_16);
+	public static final TextureBlitData TOP_CORE_HIGHLIGHT = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(16, 16),
+			Dimension.SQUARE_16);
+	public static final TextureBlitData SIDE_CORE_HIGHLIGHT = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(16, 32),
+			Dimension.SQUARE_16);
+	public static final TextureBlitData BOTTOM_CORE_HIGHLIGHT = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(16, 48),
+			Dimension.SQUARE_16);
+	public static final TextureBlitData ACCENT_TINT_HIGHLIGHT = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(32, 48),
+			Dimension.SQUARE_16);
+	public static final TextureBlitData MAIN_TINT_HIGHLIGHT = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(48, 48),
+			Dimension.SQUARE_16);
+	public static final TextureBlitData STORAGE_INFO = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(32, 16),
+			Dimension.SQUARE_16);
+
+	private static final TextureBlitData VERTICAL_ARROW_BACKGROUND = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS,
+			new UV(56, 0), SQUARE_8);
+	private static final TextureBlitData VERTICAL_ARROW_HOVERED_BACKGROUND = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS,
+			new UV(48, 0), SQUARE_8);
+	private static final TextureBlitData HORIZONTAL_ARROW_BACKGROUND = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS,
+			new UV(56, 8), SQUARE_8);
+	private static final TextureBlitData HORIZONTAL_ARROW_HOVERED_BACKGROUND = new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS,
+			new UV(48, 8), SQUARE_8);
+
+	private static final ButtonDefinition.Toggle<Boolean> VERTICAL_INHERITANCE_ARROW = new ButtonDefinition.Toggle<>(SQUARE_8, VERTICAL_ARROW_BACKGROUND,
+			Map.of(true,
+					new ToggleButton.StateData(new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(32, 0), SQUARE_8),
+							Component.translatable(StorageTranslationHelper.INSTANCE.translButton("decoration_inheritance_on"))),
+					false,
+					new ToggleButton.StateData(new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(40, 0), SQUARE_8),
+							Component.translatable(StorageTranslationHelper.INSTANCE.translButton("decoration_inheritance_off")))),
+			VERTICAL_ARROW_HOVERED_BACKGROUND);
+
+	private static final ButtonDefinition.Toggle<Boolean> HORIZONTAL_INHERITANCE_ARROW = new ButtonDefinition.Toggle<>(SQUARE_8, HORIZONTAL_ARROW_BACKGROUND,
+			Map.of(true,
+					new ToggleButton.StateData(new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(32, 8), SQUARE_8),
+							Component.translatable(StorageTranslationHelper.INSTANCE.translButton("decoration_inheritance_on"))),
+					false,
+					new ToggleButton.StateData(new TextureBlitData(GUI_DECORATION_TABLE_ELEMENTS, DECORATION_TABLE_ELEMENTS, new UV(40, 8), SQUARE_8),
+							Component.translatable(StorageTranslationHelper.INSTANCE.translButton("decoration_inheritance_off")))),
+			HORIZONTAL_ARROW_HOVERED_BACKGROUND);
+	private static final int DISABLED_CONTROL_OVERLAY_COLOR = 0x66_A0A0A0;
+
+	private BlockPreview blockPreview;
+	private long lastRotationSetTime = 0;
+
+	@Nullable
+	private ColorPicker colorPicker;
+
+	private final List<Component> resultPartsNeededTooltip = new ArrayList<>();
+	public DecorationTableScreen(DecorationTableMenu menu, Inventory playerInventory, Component title) {
+		super(menu, playerInventory, title, 250, 226);
+		inventoryLabelX = 45;
+		getMenu().setSlotChangedListener(this::updatePreviewStacks);
+	}
+
+	private void updatePreviewStacks() {
+		if (blockPreview != null) {
+			blockPreview.setPreviewStacks(getMenu().getDecoratedPreviewStacks());
+		}
+	}
+
+	@Override
+	protected void init() {
+		super.init();
+		menu.setClientDataSender(data -> ClientPacketDistributor.sendToServer(new SyncContainerClientDataPayload(data)));
+		inventoryLabelY = getMenu().getSlot(DecorationTableBlockEntity.BOTTOM_TRIM_SLOT).y + 18 + 2;
+		int lastDyeSlotIndex = getMenu().getDyeSlotRange().firstSlot() + getMenu().getDyeSlotRange().size() - 1;
+		Slot lastDyeSlot = getMenu().getSlot(lastDyeSlotIndex);
+		Slot resultSlot = menu.getResultSlot();
+		blockPreview = new BlockPreview(new Position(leftPos + lastDyeSlot.x + 16 + 1 + 8 + 1, topPos + lastDyeSlot.y),
+				new Dimension(80, resultSlot.y - lastDyeSlot.y + 16 + 4));
+		updatePreviewStacks();
+
+		addRenderableWidget(blockPreview);
+		addVerticalInheritanceArrow(DecorationTableBlockEntity.PartSlot.TOP_TRIM);
+		addVerticalInheritanceArrow(DecorationTableBlockEntity.PartSlot.SIDE_TRIM);
+		addVerticalInheritanceArrow(DecorationTableBlockEntity.PartSlot.BOTTOM_TRIM);
+
+		addInheritanceArrow(DecorationTableBlockEntity.PartSlot.TOP_CORE, -11, 4, HORIZONTAL_INHERITANCE_ARROW);
+
+		addVerticalInheritanceArrow(DecorationTableBlockEntity.PartSlot.SIDE_CORE);
+		addVerticalInheritanceArrow(DecorationTableBlockEntity.PartSlot.BOTTOM_CORE);
+
+		addPartHint(DecorationTableBlockEntity.TOP_INNER_TRIM_SLOT, TOP_INNER_TRIM_HIGHLIGHT, "top_inner_trim");
+		addPartHint(DecorationTableBlockEntity.TOP_TRIM_SLOT, TOP_TRIM_HIGHLIGHT, "top_trim");
+		addPartHint(DecorationTableBlockEntity.SIDE_TRIM_SLOT, SIDE_TRIM_HIGHLIGHT, "side_trim");
+		addPartHint(DecorationTableBlockEntity.BOTTOM_TRIM_SLOT, BOTTOM_TRIM_HIGHLIGHT, "bottom_trim");
+		addPartHint(DecorationTableBlockEntity.TOP_CORE_SLOT, TOP_CORE_HIGHLIGHT, "top");
+		addPartHint(DecorationTableBlockEntity.SIDE_CORE_SLOT, SIDE_CORE_HIGHLIGHT, "side");
+		addPartHint(DecorationTableBlockEntity.BOTTOM_CORE_SLOT, BOTTOM_CORE_HIGHLIGHT, "bottom");
+
+		Slot slot = menu.getSlot(DecorationTableBlockEntity.TOP_INNER_TRIM_SLOT);
+		addRenderableWidget(new PartStorageInfo(new Position(leftPos + slot.x + 57, topPos + slot.y), menu::getPartsStored));
+
+		addDyeElements();
+
+		if (colorPicker != null) {
+			colorPicker.setPosition(
+					new Position(leftPos + (imageWidth - ColorPicker.DIMENSIONS.width()) / 2, topPos + (imageHeight - ColorPicker.DIMENSIONS.height()) / 2));
+		}
+	}
+
+	private void addDyeElements() {
+		Slot greenDyeSlot = menu.getSlot(menu.getDyeSlotRange().firstSlot() + 1);
+		Slot topTrimSlot = menu.getSlot(DecorationTableBlockEntity.TOP_TRIM_SLOT);
+		Slot sideTrimSlot = menu.getSlot(DecorationTableBlockEntity.SIDE_TRIM_SLOT);
+
+		ColorButton mainColorButton = new ColorButton(new Position(leftPos + greenDyeSlot.x - 1, topPos + topTrimSlot.y - 1), new Dimension(18, 18),
+				menu::getMainColor, button -> openColorPicker(menu.getMainColor(), menu::setMainColor),
+				Component.translatable(StorageTranslationHelper.INSTANCE.translButton("pick_color"))) {
+			@Override
+			protected void extractBg(GuiGraphicsExtractor guiGraphics, Minecraft minecraft, int mouseX, int mouseY) {
+				if (getMenu().isMainTintActive()) {
+					super.extractBg(guiGraphics, minecraft, mouseX, mouseY);
+				} else {
+					renderDisabledColorButtonBackground(guiGraphics, getX(), getY(), getWidth(), getHeight());
+				}
+			}
+
+			@Override
+			public void extractTooltip(Screen screen, GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+				if (getMenu().isMainTintActive()) {
+					super.extractTooltip(screen, guiGraphics, mouseX, mouseY);
+				}
+			}
+
+			@Override
+			public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+				if (getMenu().isMainTintActive()) {
+					super.extractRenderState(guiGraphics, mouseX, mouseY, partialTicks);
+				} else {
+					super.extractRenderState(guiGraphics, -1, -1, partialTicks);
+				}
+			}
+
+			@Override
+			protected void extractWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+				if (getMenu().isMainTintActive()) {
+					super.extractWidget(guiGraphics, mouseX, mouseY, partialTicks);
+				} else {
+					renderDisabledColorSwatch(guiGraphics, getX(), getY(), getWidth(), getHeight(), getMenu().getMainColor());
+					renderDisabledControlOverlay(guiGraphics, getX(), getY(), getWidth(), getHeight(), DISABLED_CONTROL_OVERLAY_COLOR);
+				}
+			}
+
+			@Override
+			public boolean mouseClicked(MouseButtonEvent event, boolean doubleClicked) {
+				return getMenu().isMainTintActive() && super.mouseClicked(event, doubleClicked);
+			}
+		};
+		addRenderableWidget(mainColorButton);
+		ColorButton accentColorButton = new ColorButton(new Position(leftPos + greenDyeSlot.x - 1, topPos + sideTrimSlot.y - 1), new Dimension(18, 18),
+				menu::getAccentColor, button -> openColorPicker(menu.getAccentColor(), menu::setAccentColor),
+				Component.translatable(StorageTranslationHelper.INSTANCE.translButton("pick_color"))) {
+			@Override
+			protected void extractBg(GuiGraphicsExtractor guiGraphics, Minecraft minecraft, int mouseX, int mouseY) {
+				if (getMenu().isAccentTintActive()) {
+					super.extractBg(guiGraphics, minecraft, mouseX, mouseY);
+				} else {
+					renderDisabledColorButtonBackground(guiGraphics, getX(), getY(), getWidth(), getHeight());
+				}
+			}
+
+			@Override
+			public void extractTooltip(Screen screen, GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+				if (getMenu().isAccentTintActive()) {
+					super.extractTooltip(screen, guiGraphics, mouseX, mouseY);
+				}
+			}
+
+			@Override
+			public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+				if (getMenu().isAccentTintActive()) {
+					super.extractRenderState(guiGraphics, mouseX, mouseY, partialTicks);
+				} else {
+					super.extractRenderState(guiGraphics, -1, -1, partialTicks);
+				}
+			}
+
+			@Override
+			protected void extractWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+				if (getMenu().isAccentTintActive()) {
+					super.extractWidget(guiGraphics, mouseX, mouseY, partialTicks);
+				} else {
+					renderDisabledColorSwatch(guiGraphics, getX(), getY(), getWidth(), getHeight(), getMenu().getAccentColor());
+					renderDisabledControlOverlay(guiGraphics, getX(), getY(), getWidth(), getHeight(), DISABLED_CONTROL_OVERLAY_COLOR);
+				}
+			}
+
+			@Override
+			public boolean mouseClicked(MouseButtonEvent event, boolean doubleClicked) {
+				return getMenu().isAccentTintActive() && super.mouseClicked(event, doubleClicked);
+			}
+		};
+		addRenderableWidget(accentColorButton);
+
+		addRenderableWidget(new PartIcon(new Position(mainColorButton.getX() + mainColorButton.getWidth() + 1, mainColorButton.getY() + 1), MAIN_TINT_HIGHLIGHT,
+				Component.translatable(StorageTranslationHelper.INSTANCE.translGui("tint.main")), getMenu()::isMainTintActive));
+		addRenderableWidget(new PartIcon(new Position(accentColorButton.getX() + accentColorButton.getWidth() + 1, accentColorButton.getY() + 1),
+				ACCENT_TINT_HIGHLIGHT, Component.translatable(StorageTranslationHelper.INSTANCE.translGui("tint.accent")), getMenu()::isAccentTintActive));
+	}
+
+	private void openColorPicker(int color, IntConsumer colorSetter) {
+		colorPicker = new ColorPicker(this,
+				new Position(leftPos + (imageWidth - ColorPicker.DIMENSIONS.width()) / 2, topPos + (imageHeight - ColorPicker.DIMENSIONS.height()) / 2), color,
+				c -> {
+					colorSetter.accept(c);
+					colorPicker = null;
+					blockPreview.setVisible(true);
+					updatePreviewStacks();
+				});
+		blockPreview.setVisible(false);
+	}
+
+	private void addVerticalInheritanceArrow(DecorationTableBlockEntity.PartSlot slot) {
+		addInheritanceArrow(slot, 4, -11, VERTICAL_INHERITANCE_ARROW);
+	}
+
+	private void addInheritanceArrow(DecorationTableBlockEntity.PartSlot partSlot, int xOffset, int yOffset, ButtonDefinition.Toggle<Boolean> arrowDefinition) {
+		Slot slot = menu.getSlot(partSlot.getSlotIndex());
+		addRenderableWidget(new ToggleButton<>(new Position(leftPos + slot.x + xOffset, topPos + slot.y + yOffset), arrowDefinition, button -> {
+			resultPartsNeededTooltip.clear();
+			getMenu().setSlotMaterialInheritance(partSlot, !getMenu().isSlotMaterialInherited(partSlot));
+			updatePreviewStacks();
+		}, () -> getMenu().isSlotMaterialInherited(partSlot)) {
+			@Override
+			public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+				if (getMenu().isInheritanceSlotActive(partSlot.getSlotIndex())) {
+					super.extractRenderState(guiGraphics, mouseX, mouseY, partialTicks);
+				} else {
+					super.extractRenderState(guiGraphics, -1, -1, partialTicks);
+				}
+				if (getMenu().isInheritanceSlotActive(partSlot.getSlotIndex()) && isMouseOver(mouseX, mouseY)) {
+					PreviewRotation rotations = SLOT_PREVIEW_ROTATIONS.get(partSlot.getSlotIndex());
+					if (rotations != null) {
+						blockPreview.startMaterialRotation(rotations.xAxisRotation(), rotations.yAxisRotation(), rotations.zAxisRotation());
+						setPreviewRotations(rotations.xAxisRotation(), rotations.yAxisRotation());
+					}
+				}
+			}
+
+			@Override
+			public void extractTooltip(Screen screen, GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+				if (getMenu().isInheritanceSlotActive(partSlot.getSlotIndex())) {
+					super.extractTooltip(screen, guiGraphics, mouseX, mouseY);
+				}
+			}
+
+			@Override
+			public boolean mouseClicked(MouseButtonEvent event, boolean doubleClicked) {
+				return getMenu().isInheritanceSlotActive(partSlot.getSlotIndex()) && super.mouseClicked(event, doubleClicked);
+			}
+		});
+	}
+
+	@Override
+	public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+		extractTransparentBackground(guiGraphics);
+		guiGraphics.blit(RenderPipelines.GUI_TEXTURED, GUI_BACKGROUND, leftPos, topPos, 0, 0, imageWidth, imageHeight, 256, 256);
+
+		renderDyeSlotsOverlays(guiGraphics);
+	}
+
+	private void renderDyeSlotsOverlays(GuiGraphicsExtractor guiGraphics) {
+		if (!getMenu().areTintsActive()) {
+			return;
+		}
+		Matrix3x2fStack pose = guiGraphics.pose();
+		pose.pushMatrix();
+		pose.translate(leftPos, topPos);
+		Slot redSlot = getMenu().getSlot(getMenu().getDyeSlotRange().firstSlot());
+		renderSlotOverlay(guiGraphics, redSlot, 0x33_FF0000);
+		Slot greenSlot = getMenu().getSlot(getMenu().getDyeSlotRange().firstSlot() + 1);
+		renderSlotOverlay(guiGraphics, greenSlot, 0x33_00FF00);
+		Slot blueSlot = getMenu().getSlot(getMenu().getDyeSlotRange().firstSlot() + 2);
+		renderSlotOverlay(guiGraphics, blueSlot, 0x33_0000FF);
+		pose.popMatrix();
+	}
+
+	private void renderSlotOverlay(GuiGraphicsExtractor guiGraphics, Slot slot, int slotColor) {
+		guiGraphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, slotColor);
+	}
+
+	private boolean isSlotHighlightDisabled(Slot slot) {
+		if (!slot.getItem().isEmpty()) {
+			return false;
+		}
+
+		for (int slotIndex = DecorationTableBlockEntity.TOP_INNER_TRIM_SLOT; slotIndex <= DecorationTableBlockEntity.BOTTOM_CORE_SLOT; slotIndex++) {
+			if (slot == getMenu().getSlot(slotIndex)) {
+				return !getMenu().isMaterialSlotActive(slotIndex);
+			}
+		}
+
+		for (int slotIndex = getMenu().getDyeSlotRange().firstSlot(); slotIndex < getMenu().getDyeSlotRange().firstSlot()
+				+ getMenu().getDyeSlotRange().size(); slotIndex++) {
+			if (slot == getMenu().getSlot(slotIndex)) {
+				return !getMenu().areTintsActive();
+			}
+		}
+
+		return false;
+	}
+
+	private static void renderDisabledControlOverlay(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, int color) {
+		guiGraphics.fill(x, y, x + width, y + height, color);
+	}
+
+	private static void renderDisabledColorButtonBackground(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height) {
+		guiGraphics.fill(x, y, x + width, y + height, 0xFF_A0A0A0);
+	}
+
+	private static void renderDisabledColorSwatch(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, int color) {
+		if (color == -1) {
+			renderDisabledCheckerboard(guiGraphics, x, y, width, height);
+			return;
+		}
+
+		int grayColor = getGrayscaleColor(color);
+		guiGraphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, grayColor);
+	}
+
+	private static void renderDisabledCheckerboard(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height) {
+		for (int row = 0; row < height - 2; row++) {
+			for (int column = 0; column < width - 2; column++) {
+				guiGraphics.fill(x + column + 1, y + row + 1, x + column + 2, y + row + 2, ((row + column) % 2 == 0) ? 0xFF_B8B8B8 : 0xFF_8A8A8A);
+			}
+		}
+	}
+
+	private static int getGrayscaleColor(int color) {
+		int red = color >> 16 & 255;
+		int green = color >> 8 & 255;
+		int blue = color & 255;
+		int gray = (int) (red * 0.299f + green * 0.587f + blue * 0.114f);
+		return 0xFF_000000 | gray << 16 | gray << 8 | gray;
+	}
+
+	private void addPartHint(int slotIndex, TextureBlitData texture, String barrelPart) {
+		Slot slot = menu.getSlot(slotIndex);
+		addRenderableWidget(new PartIcon(new Position(leftPos + slot.x + 18, topPos + slot.y), texture, () -> getMaterialTooltip(slotIndex, barrelPart),
+				() -> getMenu().isMaterialSlotActive(slotIndex)));
+	}
+
+	private Component getMaterialTooltip(int slotIndex, String barrelPart) {
+		if (slotIndex == DecorationTableBlockEntity.TOP_INNER_TRIM_SLOT && getMenu().getMaterialLayout() == DecorationTableBlockEntity.MaterialLayout.SINGLE) {
+			return Component.translatable(StorageTranslationHelper.INSTANCE.translGui("material"));
+		}
+		return Component.translatable(StorageTranslationHelper.INSTANCE.translGui("barrel_part." + barrelPart));
+	}
+
+	@Override
+	public void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+		updatePreviewRotation(mouseX, mouseY);
+		super.extractContents(guiGraphics, mouseX, mouseY, partialTick);
+
+		if (colorPicker != null) {
+			extractTransparentBackground(guiGraphics);
+			colorPicker.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+		}
+	}
+
+	@Override
+	protected void extractSlot(GuiGraphicsExtractor guiGraphics, Slot slot, int mouseX, int mouseY) {
+		super.extractSlot(guiGraphics, slot, mouseX, mouseY);
+		if (slot.getItem().isEmpty() && getMenu().isSlotMaterialInherited(slot.index)) {
+			ItemStack inheritedItem = getMenu().getInheritedResource(slot.index).toStack();
+			if (!inheritedItem.isEmpty()) {
+				guiGraphics.item(inheritedItem, slot.x, slot.y, slot.x + slot.y * imageWidth);
+				guiGraphics.blit(RenderPipelines.GUI_TEXTURED, GuiHelper.GUI_CONTROLS, slot.x, slot.y, 77, 0, 16, 16, 256, 256);
+			}
+		}
+		if (slot == getMenu().getStorageSlot() && slot.getItem().isEmpty()) {
+			renderInputSlotPreview(guiGraphics, slot);
+		}
+		if (slot.getItem().isEmpty() && isSlotHighlightDisabled(slot)) {
+			renderStackOverlay(guiGraphics, slot.x, slot.y);
+		}
+	}
+
+	private void renderInputSlotPreview(GuiGraphicsExtractor guiGraphics, Slot slot) {
+		ItemStack previewStack = DecorationTableInputSlotPreview.getPreviewStack(System.currentTimeMillis(), INPUT_SLOT_PREVIEW_ROTATION_INTERVAL_MS);
+		if (previewStack.isEmpty()) {
+			return;
+		}
+
+		guiGraphics.item(previewStack, slot.x, slot.y);
+		renderStackOverlay(guiGraphics, slot.x, slot.y);
+	}
+
+	private static void renderStackOverlay(GuiGraphicsExtractor guiGraphics, int x, int y) {
+		guiGraphics.blit(RenderPipelines.GUI_TEXTURED, GuiHelper.GUI_CONTROLS, x, y, 77, 0, 16, 16, 256, 256);
+	}
+
+	@Override
+	protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
+		List<Component> tooltip = super.getTooltipFromContainerItem(stack);
+		if (hoveredSlot == getMenu().getResultSlot() && !hoveredSlot.getItem().isEmpty() && hoveredSlot.getItem().getItem() != ModItems.PAINTBRUSH.get()) {
+			tooltip.addAll(getResultPartsNeededTooltip());
+		} else if (!resultPartsNeededTooltip.isEmpty()) {
+			resultPartsNeededTooltip.clear();
+		}
+		return tooltip;
+	}
+
+	private List<Component> getResultPartsNeededTooltip() {
+		if (!resultPartsNeededTooltip.isEmpty()) {
+			return resultPartsNeededTooltip;
+		}
+
+		Map<Identifier, Integer> partsNeeded = getMenu().getPartsNeeded();
+		addPartCountInfo(partsNeeded, resultPartsNeededTooltip,
+				location -> getMenu().getMissingDyes().contains(location) ? ChatFormatting.RED : ChatFormatting.DARK_GRAY);
+		return resultPartsNeededTooltip;
+	}
+
+	private static void addPartCountInfo(Map<Identifier, Integer> partCounts, List<Component> tooltip, Function<Identifier, ChatFormatting> getPartFormatting) {
+		Map<ItemStack, Tuple<Identifier, Integer>> itemCounts = new LinkedHashMap<>();
+		partCounts.forEach((part, count) -> {
+			if (BuiltInRegistries.ITEM.containsKey(part)) {
+				Item item = BuiltInRegistries.ITEM.getValue(part);
+				itemCounts.put(new ItemStack(item), new Tuple<>(part, count));
+			} else {
+				BuiltInRegistries.ITEM.get(TagKey.create(Registries.ITEM, part)).flatMap(set -> set.stream().findFirst())
+						.ifPresent(dye -> itemCounts.put(new ItemStack(dye), new Tuple<>(part, count)));
+			}
+		});
+
+		itemCounts.entrySet().stream().sorted(Comparator.comparing(entry -> entry.getKey().getHoverName().getString())).forEach(entry -> {
+			ItemStack itemStack = entry.getKey();
+			Identifier location = entry.getValue().getA();
+			int count = entry.getValue().getB();
+			MutableComponent partCountText = Component.literal(count + "/" + DecorationHelper.BLOCK_TOTAL_PARTS + " ("
+					+ String.format("%.0f%%", (float) count / DecorationHelper.BLOCK_TOTAL_PARTS * 100) + ") of ");
+			tooltip.add(partCountText.append(itemStack.getHoverName()).withStyle(getPartFormatting.apply(location)));
+		});
+	}
+
+	@Nullable
+	private static final Map<Integer, PreviewRotation> SLOT_PREVIEW_ROTATIONS = Map.of(0, new PreviewRotation(-90, 180, 0), 1, new PreviewRotation(-90, 180, 0),
+			4, new PreviewRotation(-90, 180, 0), 2, new PreviewRotation(0, 180, 0), 5, new PreviewRotation(0, 180, 0), 3, new PreviewRotation(90, 180, 0), 6,
+			new PreviewRotation(90, 180, 0));
+	private void updatePreviewRotation(int mouseX, int mouseY) {
+		SLOT_PREVIEW_ROTATIONS.forEach((slotIndex, rotation) -> updatePreviewRotationForSlot(slotIndex, mouseX, mouseY, rotation));
+		if (lastRotationSetTime != 0 && System.currentTimeMillis() - lastRotationSetTime > 1000) {
+			blockPreview.returnFromMaterialRotation();
+			blockPreview.resetToDefaultRotation();
+			lastRotationSetTime = 0;
+		}
+	}
+
+	private void updatePreviewRotationForSlot(int slotIndex, int mouseX, int mouseY, PreviewRotation rotation) {
+		if (!getMenu().isMaterialSlotActive(slotIndex)) {
+			return;
+		}
+
+		Slot slot = getMenu().getSlot(slotIndex);
+		int slotLeft = leftPos + slot.x;
+		int slotTop = topPos + slot.y;
+		if (leftPos + slot.x <= mouseX && mouseX < slotLeft + 16 + 18 && slotTop <= mouseY && mouseY < slotTop + 16) {
+			blockPreview.startMaterialRotation(rotation.xAxisRotation(), rotation.yAxisRotation(), rotation.zAxisRotation());
+			setPreviewRotations(rotation.xAxisRotation(), rotation.yAxisRotation());
+		}
+	}
+
+	private void setPreviewRotations(int xAxisRotation, int yAxisRotation) {
+		blockPreview.setTargetRotations(xAxisRotation, yAxisRotation);
+		lastRotationSetTime = System.currentTimeMillis();
+	}
+
+	@Override
+	public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+		if (colorPicker != null) {
+			return colorPicker.mouseDragged(event, dragX, dragY);
+		}
+
+		for (GuiEventListener child : children()) {
+			if (child.isMouseOver(event.x(), event.y()) && child.mouseDragged(event, dragX, dragY)) {
+				if (child instanceof BlockPreview) {
+					lastRotationSetTime = System.currentTimeMillis() + 100_000;
+				}
+
+				return true;
+			}
+		}
+		return super.mouseDragged(event, dragX, dragY);
+	}
+
+	@Override
+	protected void extractTooltip(GuiGraphicsExtractor guiGraphics, int x, int y) {
+		if (colorPicker != null) {
+			colorPicker.extractTooltip(this, guiGraphics, x, y);
+			return;
+		}
+
+		super.extractTooltip(guiGraphics, x, y);
+
+		renderables.forEach(renderable -> {
+			if (renderable instanceof WidgetBase widget) {
+				widget.extractTooltip(this, guiGraphics, x, y);
+			}
+		});
+	}
+
+	@Override
+	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClicked) {
+		if (colorPicker != null) {
+			return colorPicker.mouseClicked(event, doubleClicked);
+		}
+		GuiEventListener focused = getFocused();
+		if (focused != null && !focused.isMouseOver(event.x(), event.y()) && (focused instanceof WidgetBase widgetBase)) {
+			widgetBase.setFocused(false);
+		}
+
+		return super.mouseClicked(event, doubleClicked);
+	}
+
+	@Override
+	public boolean keyPressed(KeyEvent event) {
+		if (event.key() == 256 && colorPicker != null) {
+			colorPicker = null;
+			blockPreview.setVisible(true);
+			updatePreviewStacks();
+			return true;
+		}
+
+		return super.keyPressed(event);
+	}
+
+	private static class PartIcon extends WidgetBase {
+		private final TextureBlitData texture;
+		private final TextureBlitData disabledTexture;
+		private final Supplier<Component> tooltip;
+		private final BooleanSupplier isActive;
+
+		protected PartIcon(Position position, TextureBlitData texture, Component tooltip) {
+			this(position, texture, () -> tooltip, () -> true);
+		}
+
+		protected PartIcon(Position position, TextureBlitData texture, Component tooltip, BooleanSupplier isActive) {
+			this(position, texture, () -> tooltip, isActive);
+		}
+
+		protected PartIcon(Position position, TextureBlitData texture, Supplier<Component> tooltip, BooleanSupplier isActive) {
+			super(position, new Dimension(texture.getWidth(), texture.getHeight()));
+			this.texture = texture;
+			disabledTexture = new TextureBlitData(texture.getTextureName(), DECORATION_TABLE_ELEMENTS,
+					new UV(texture.getU() + DISABLED_TEXTURE_U_OFFSET, texture.getV()), new Dimension(texture.getWidth(), texture.getHeight()));
+			this.tooltip = tooltip;
+			this.isActive = isActive;
+		}
+
+		@Override
+		protected void extractBg(GuiGraphicsExtractor guiGraphics, Minecraft minecraft, int mouseX, int mouseY) {
+			if (isActive.getAsBoolean()) {
+				GuiHelper.blit(guiGraphics, x, y, texture);
+			} else {
+				GuiHelper.blit(guiGraphics, x, y, disabledTexture);
+			}
+		}
+
+		@Override
+		protected void extractWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+			// noop
+		}
+
+		@Override
+		public void extractTooltip(Screen screen, GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+			if (isActive.getAsBoolean() && isMouseOver(mouseX, mouseY)) {
+				guiGraphics.setTooltipForNextFrame(screen.sophisticatedCore_getMinecraft().font, tooltip.get(), mouseX, mouseY);
+			}
+		}
+	}
+
+	private static class PartStorageInfo extends WidgetBase {
+		private final List<Component> partStorageTooltip = new ArrayList<>();
+		private final Supplier<Map<Identifier, Integer>> getPartsStored;
+
+		protected PartStorageInfo(Position position, Supplier<Map<Identifier, Integer>> getPartsStored) {
+			super(position, Dimension.SQUARE_16);
+			this.getPartsStored = getPartsStored;
+		}
+
+		@Override
+		protected void extractBg(GuiGraphicsExtractor guiGraphics, Minecraft minecraft, int mouseX, int mouseY) {
+			if (hasNoPartsToShow()) {
+				return;
+			}
+
+			GuiHelper.blit(guiGraphics, x, y, STORAGE_INFO);
+		}
+
+		private boolean hasNoPartsToShow() {
+			return getPartsStored.get().isEmpty();
+		}
+
+		@Override
+		protected void extractWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+			// noop
+		}
+
+		@Override
+		public void extractTooltip(Screen screen, GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+			if (hasNoPartsToShow()) {
+				return;
+			}
+
+			if (isMouseOver(mouseX, mouseY)) {
+				guiGraphics.setTooltipForNextFrame(screen.sophisticatedCore_getMinecraft().font, getPartStorageTooltip(), Optional.empty(), mouseX, mouseY);
+			} else if (!partStorageTooltip.isEmpty()) {
+				partStorageTooltip.clear();
+			}
+		}
+
+		private List<Component> getPartStorageTooltip() {
+			if (!partStorageTooltip.isEmpty() || hasNoPartsToShow()) {
+				return partStorageTooltip;
+			}
+
+			partStorageTooltip.add(Component.translatable(StorageTranslationHelper.INSTANCE.translGuiTooltip("parts_stored")));
+			addPartCountInfo(getPartsStored.get(), partStorageTooltip, location -> ChatFormatting.GRAY);
+			return partStorageTooltip;
+		}
+	}
+
+	private static class StackButton extends ButtonBase {
+		private static final TextureBlitData BUTTON_HOVER = new TextureBlitData(GuiHelper.GUI_CONTROLS, Dimension.SQUARE_256, new UV(63, 42),
+				Dimension.SQUARE_18);
+		private final Supplier<ItemStack> stackSupplier;
+
+		protected StackButton(Position position, IntConsumer onClick, Supplier<ItemStack> stackSupplier) {
+			super(position, Dimension.SQUARE_18, onClick);
+			this.stackSupplier = stackSupplier;
+		}
+
+		@Override
+		protected void extractBg(GuiGraphicsExtractor guiGraphics, Minecraft minecraft, int mouseX, int mouseY) {
+
+		}
+
+		@Override
+		protected void extractWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+			ItemStack stack = stackSupplier.get();
+			if (stack.isEmpty()) {
+				return;
+			}
+
+			guiGraphics.item(stack, x + 1, y + 1);
+			if (isMouseOver(mouseX, mouseY)) {
+				GuiHelper.blit(guiGraphics, x, y, BUTTON_HOVER);
+			}
+		}
+	}
+
+	private static class BlockPreview extends RotatablePreviewWidget {
+		private final List<ItemStack> previewStacks = new ArrayList<>();
+		private int selectedPreview = 0;
+		private final List<StackButton> previewStackButtons = new ArrayList<>();
+		private boolean useDefaultReferenceRotation = true;
+		private boolean materialRotationActive;
+		private boolean materialRotationReturning;
+		private float materialRotationTargetX;
+		private float materialRotationTargetY;
+		private float materialRotationTargetZ;
+		private final Quaternionf materialRotationFrom = new Quaternionf();
+		private final Quaternionf materialRotationTo = new Quaternionf();
+		private final Quaternionf guiRotation = new Quaternionf();
+		private boolean defaultRotationsKnown;
+		private float defaultXAxisRotation;
+		private float defaultYAxisRotation;
+		private float currentXAxisRotation;
+		private float currentYAxisRotation;
+		private long materialRotationStartedAt;
+
+		protected BlockPreview(Position position, Dimension dimension) {
+			super(position, dimension);
+		}
+
+		public void setPreviewStacks(List<ItemStack> previewStacks) {
+			this.previewStacks.clear();
+			this.previewStacks.addAll(previewStacks);
+			selectedPreview = 0;
+			useDefaultReferenceRotation = true;
+			materialRotationActive = false;
+			defaultRotationsKnown = false;
+			updatePreviewStackButtons();
+		}
+
+		private void updatePreviewStackButtons() {
+			previewStackButtons.forEach(children::remove);
+			previewStackButtons.clear();
+
+			if (previewStacks.size() < 2) {
+				return;
+			}
+
+			int x = this.x + (getWidth() - previewStacks.size() * (18 + 2)) / 2;
+			for (int i = 0; i < previewStacks.size(); i++) {
+				ItemStack stack = previewStacks.get(i);
+				int finalI = i;
+				previewStackButtons.add(new StackButton(new Position(x + i * 20, y + getHeight() - 19), button -> {
+					selectedPreview = finalI;
+					useDefaultReferenceRotation = true;
+					defaultRotationsKnown = false;
+				}, () -> stack));
+			}
+			previewStackButtons.forEach(this::addChild);
+		}
+
+		public void resetToDefaultRotation() {
+			if (defaultRotationsKnown) {
+				useDefaultReferenceRotation = false;
+				setTargetRotations(defaultXAxisRotation, defaultYAxisRotation);
+			} else {
+				useDefaultReferenceRotation = true;
+			}
+		}
+
+		private GuiTransform resolveModel(ItemStack previewStack, ItemStackRenderState renderState, ItemDisplayContext displayContext) {
+			minecraft.getItemModelResolver().updateForTopItem(renderState, previewStack, displayContext, null, null, 0);
+			return getGuiTransform(renderState);
+		}
+
+		public void startMaterialRotation(float xAxisRotation, float yAxisRotation, float zAxisRotation) {
+			if (materialRotationActive && materialRotationTargetX == xAxisRotation && materialRotationTargetY == yAxisRotation
+					&& materialRotationTargetZ == zAxisRotation) {
+				return;
+			}
+
+			// The native GUI preview has an identity parent pose until the user drags it.
+			materialRotationFrom.set(materialRotationActive
+					? getMaterialRotation()
+					: useDefaultReferenceRotation ? new Quaternionf() : getManualRotation(currentXAxisRotation, currentYAxisRotation));
+			materialRotationTo.set(getMaterialRotationTarget(xAxisRotation, yAxisRotation, zAxisRotation));
+			useDefaultReferenceRotation = false;
+			materialRotationActive = true;
+			materialRotationReturning = false;
+			materialRotationTargetX = xAxisRotation;
+			materialRotationTargetY = yAxisRotation;
+			materialRotationTargetZ = zAxisRotation;
+			materialRotationStartedAt = System.currentTimeMillis();
+		}
+
+		public void returnFromMaterialRotation() {
+			if (!materialRotationActive) {
+				return;
+			}
+
+			materialRotationFrom.set(getMaterialRotation());
+			materialRotationTo.identity();
+			materialRotationTargetX = defaultXAxisRotation;
+			materialRotationTargetY = defaultYAxisRotation;
+			materialRotationTargetZ = 0;
+			materialRotationReturning = true;
+			materialRotationStartedAt = System.currentTimeMillis();
+		}
+
+		private Quaternionf getMaterialRotation() {
+			float progress = Math.min(1.0F, (System.currentTimeMillis() - materialRotationStartedAt) / 1000.0F);
+			Quaternionf rotation = new Quaternionf(materialRotationFrom).slerp(materialRotationTo, Easing.EASE_IN_OUT_CUBIC.ease(progress));
+			if (materialRotationReturning && progress >= 1.0F) {
+				materialRotationActive = false;
+				materialRotationReturning = false;
+				useDefaultReferenceRotation = true;
+			}
+			return rotation;
+		}
+
+		private Quaternionf getMaterialRotationTarget(float xAxisRotation, float yAxisRotation, float zAxisRotation) {
+			Quaternionf previewBasisRotation = new Quaternionf().rotationX((float) Math.PI);
+			return getReferenceRotation(xAxisRotation, yAxisRotation, zAxisRotation).mul(previewBasisRotation).mul(new Quaternionf(guiRotation).invert())
+					.mul(previewBasisRotation);
+		}
+
+		private GuiTransform getGuiTransform(ItemStackRenderState renderState) {
+			if (renderState.layers.length == 0) {
+				return new GuiTransform(new Quaternionf(), new Quaternionf(), 0, 0);
+			}
+
+			ItemTransform itemTransform = renderState.layers[0].itemTransform;
+			float xAxisRotation = itemTransform.rotation().x();
+			float yAxisRotation = itemTransform.rotation().y();
+			return new GuiTransform(
+					new Quaternionf().rotationXYZ((float) Math.toRadians(xAxisRotation), (float) Math.toRadians(yAxisRotation),
+							(float) Math.toRadians(itemTransform.rotation().z())),
+					getReferenceRotation(xAxisRotation, yAxisRotation, 0), xAxisRotation, yAxisRotation);
+		}
+
+		@Override
+		protected void extractPreview(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, float xAxisRotation, float yAxisRotation,
+				float partialTicks) {
+			if (previewStacks.isEmpty()) {
+				return;
+			}
+
+			ItemStack previewStack = previewStacks.get(selectedPreview);
+
+			if (previewStack.isEmpty()) {
+				return;
+			}
+
+			TrackingItemStackRenderState renderState = new TrackingItemStackRenderState();
+			GuiTransform guiTransform = resolveModel(previewStack, renderState, ItemDisplayContext.GUI);
+			if (renderState.isEmpty()) {
+				return;
+			}
+			defaultXAxisRotation = guiTransform.xAxisRotation();
+			defaultYAxisRotation = guiTransform.yAxisRotation();
+			defaultRotationsKnown = true;
+			currentXAxisRotation = xAxisRotation;
+			currentYAxisRotation = yAxisRotation;
+			guiRotation.set(guiTransform.guiRotation());
+			Quaternionf manualParentRotation = useDefaultReferenceRotation
+					? new Quaternionf()
+					: materialRotationActive ? getMaterialRotation() : getManualRotation(xAxisRotation, yAxisRotation);
+			int previewHeight = height - (previewStackButtons.isEmpty() ? 0 : 20);
+			guiGraphics.guiRenderState.addPicturesInPictureState(new DecorationTablePreviewRenderState(renderState, new Matrix3x2f(guiGraphics.pose()),
+					guiGraphics.scissorStack.peek(), x, y, x + getWidth(), y + previewHeight, manualParentRotation));
+		}
+
+		@Override
+		public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+			if (!previewStackButtons.isEmpty() && event.y() > y + getHeight() - 20) {
+				return getChildAt(event.x(), event.y()).map(child -> child.mouseDragged(event, dragX, dragY)).orElse(false);
+			}
+
+			useDefaultReferenceRotation = false;
+			materialRotationActive = false;
+			return super.mouseDragged(event, dragX, dragY);
+		}
+
+		private Quaternionf getManualRotation(float xAxisRotation, float yAxisRotation) {
+			Quaternionf defaultRotation = getManualReferenceRotation(defaultXAxisRotation, defaultYAxisRotation);
+			Quaternionf targetRotation = getManualReferenceRotation(defaultXAxisRotation, yAxisRotation);
+			Quaternionf localRotation = defaultRotation.invert().mul(targetRotation);
+			Quaternionf yawRotation = new Quaternionf(guiRotation).mul(localRotation).mul(new Quaternionf(guiRotation).invert());
+			return new Quaternionf().rotationX((float) Math.toRadians(xAxisRotation - defaultXAxisRotation)).mul(yawRotation);
+		}
+
+		private static Quaternionf getManualReferenceRotation(float xAxisRotation, float yAxisRotation) {
+			return new Quaternionf().rotationX((float) Math.toRadians(xAxisRotation)).rotateY((float) Math.toRadians(-yAxisRotation));
+		}
+
+		private static Quaternionf getReferenceRotation(float xAxisRotation, float yAxisRotation, float zAxisRotation) {
+			return new Quaternionf().rotationX((float) Math.toRadians(-xAxisRotation)).rotateY((float) Math.toRadians(yAxisRotation))
+					.rotateZ((float) Math.toRadians(zAxisRotation));
+		}
+
+		private record GuiTransform(Quaternionf guiRotation, Quaternionf defaultReferenceRotation, float xAxisRotation, float yAxisRotation) {
+		}
+	}
+
+	private record PreviewRotation(int xAxisRotation, int yAxisRotation, int zAxisRotation) {
+	}
+
+}

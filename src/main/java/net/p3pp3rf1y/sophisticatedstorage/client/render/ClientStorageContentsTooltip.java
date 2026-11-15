@@ -1,0 +1,78 @@
+package net.p3pp3rf1y.sophisticatedstorage.client.render;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.p3pp3rf1y.sophisticatedcore.fabric.client.network.ClientPacketDistributor;
+import net.p3pp3rf1y.sophisticatedcore.api.IStorageWrapper;
+import net.p3pp3rf1y.sophisticatedcore.client.render.ClientStorageContentsTooltipBase;
+import net.p3pp3rf1y.sophisticatedcore.linkedstorage.ClientLinkedStorageContents;
+import net.p3pp3rf1y.sophisticatedcore.linkedstorage.RequestLinkedStorageContentsPayload;
+import net.p3pp3rf1y.sophisticatedcore.network.ItemStackReference;
+import net.p3pp3rf1y.sophisticatedstorage.block.StorageBlockEntity;
+import net.p3pp3rf1y.sophisticatedstorage.item.LinkedStorageTooltip;
+import net.p3pp3rf1y.sophisticatedstorage.item.StackStorageWrapper;
+import net.p3pp3rf1y.sophisticatedstorage.item.StorageContentsTooltip;
+import net.p3pp3rf1y.sophisticatedstorage.network.RequestStorageContentsPayload;
+
+import javax.annotation.Nullable;
+
+import java.util.UUID;
+
+public class ClientStorageContentsTooltip extends ClientStorageContentsTooltipBase {
+	private final ItemStack storageItem;
+	private final ItemStack contextStack;
+	@Nullable
+	private final ClientLinkedStorageTooltip linkedStorageTooltip;
+
+	public static void onWorldLoad() {
+		refreshContents();
+		ClientLinkedStorageContents.clear();
+		lastRequestTime = 0;
+	}
+
+	@Override
+	public void extractImage(Font font, int x, int y, int w, int h, GuiGraphicsExtractor graphics) {
+		extractTooltip(font, x, y, graphics);
+		if (linkedStorageTooltip != null) {
+			linkedStorageTooltip.extractImage(font, x, y + super.getHeight(font), w, h, graphics);
+		}
+	}
+
+	@Override
+	protected IStorageWrapper getTooltipStorageWrapper() {
+		return StackStorageWrapper.fromStack(Minecraft.getInstance().level.registryAccess(), storageItem);
+	}
+
+	public ClientStorageContentsTooltip(StorageContentsTooltip tooltip) {
+		storageItem = tooltip.getStorageItem();
+		contextStack = tooltip.contextStack();
+		LinkedStorageTooltip linkedStorageTooltip = tooltip.linkedStorageTooltip();
+		this.linkedStorageTooltip = linkedStorageTooltip == null ? null : new ClientLinkedStorageTooltip(linkedStorageTooltip);
+	}
+
+	@Override
+	public int getWidth(Font font) {
+		return linkedStorageTooltip == null ? super.getWidth(font) : Math.max(super.getWidth(font), linkedStorageTooltip.getWidth(font));
+	}
+
+	@Override
+	public int getHeight(Font font) {
+		return super.getHeight(font) + (linkedStorageTooltip == null ? 0 : linkedStorageTooltip.getHeight(font));
+	}
+
+	@Override
+	protected void sendInventorySyncRequest(UUID uuid) {
+		Player player = Minecraft.getInstance().player;
+		if (player == null) {
+			return;
+		}
+		ItemStackReference.find(player, contextStack)
+				.ifPresent(reference -> StorageBlockEntity.getLinkedStorageEndpointData(storageItem).ifPresentOrElse(
+						endpoint -> ClientPacketDistributor.sendToServer(new RequestLinkedStorageContentsPayload(endpoint.groupId(),
+								ClientLinkedStorageContents.getRevision(endpoint.groupId()).orElse(-1L), reference)),
+						() -> ClientPacketDistributor.sendToServer(new RequestStorageContentsPayload(uuid, reference))));
+	}
+}

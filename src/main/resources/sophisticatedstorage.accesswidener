@@ -22,6 +22,7 @@ accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRe
 # --- Client / rendering ---
 accessible field net/minecraft/client/multiplayer/MultiPlayerGameMode destroyDelay I
 accessible field net/minecraft/client/model/monster/shulker/ShulkerModel lid Lnet/minecraft/client/model/geom/ModelPart;
+accessible field net/minecraft/client/renderer/texture/SpriteContents originalImage Lcom/mojang/blaze3d/platform/NativeImage;
 
 # --- Container openers / vanilla block entities ---
 accessible field net/minecraft/world/level/block/entity/ContainerOpenersCounter openCount I
