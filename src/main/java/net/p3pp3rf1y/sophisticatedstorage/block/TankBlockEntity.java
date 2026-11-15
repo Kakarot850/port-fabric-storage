@@ -3,6 +3,7 @@ package net.p3pp3rf1y.sophisticatedstorage.block;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -14,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -151,10 +153,10 @@ public class TankBlockEntity extends StorageBlockEntity implements INativeContro
 		if (isPrimary()) {
 			return Optional.of(this);
 		}
-		if (level == null || !level.hasChunkAt(primaryPos)) {
+		if (level == null) {
 			return Optional.empty();
 		}
-		return WorldHelper.getBlockEntity(level, primaryPos, TankBlockEntity.class)
+		return WorldHelper.getLoadedBlockEntity(level, primaryPos, TankBlockEntity.class)
 				.filter(primary -> primary.isPrimary() && primary.getTier() == getTier() && worldPosition.getX() == primary.worldPosition.getX()
 						&& worldPosition.getZ() == primary.worldPosition.getZ() && worldPosition.getY() > primary.worldPosition.getY()
 						&& worldPosition.getY() < primary.worldPosition.getY() + primary.height);
@@ -439,7 +441,12 @@ public class TankBlockEntity extends StorageBlockEntity implements INativeContro
 		super.clearContent();
 	}
 	private void updateFluidLighting() {
-		if (level == null || level.isClientSide() || !isPrimary() || isRemoved() || unloaded) {
+		if (level == null || level.isClientSide() || !isPrimary() || isRemoved() || unloaded || !level.isLoaded(worldPosition)) {
+			return;
+		}
+		LevelChunk chunk = level.getChunkSource().getChunkNow(SectionPos.blockToSectionCoord(worldPosition.getX()),
+				SectionPos.blockToSectionCoord(worldPosition.getZ()));
+		if (chunk == null) {
 			return;
 		}
 		TankStorageWrapper storage = getStorageWrapper();
@@ -449,7 +456,7 @@ public class TankBlockEntity extends StorageBlockEntity implements INativeContro
 		boolean changed = false;
 		for (int index = 0; index < height; index++) {
 			BlockPos pos = worldPosition.above(index);
-			BlockState stateAtPos = level.getBlockState(pos);
+			BlockState stateAtPos = index == 0 ? getBlockState() : chunk.getBlockState(pos);
 			if (stateAtPos.getBlock() instanceof TankBlock) {
 				boolean occupied = emission > 0 && TankFluidPartition
 						.split(height, index, capacity, Math.min(capacity, fluid.getAmount()), fluid.getFluidType().isLighterThanAir()).dropped() > 0;
