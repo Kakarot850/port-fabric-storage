@@ -71,10 +71,14 @@ public class CommonEventHandler {
 		if (!(state.getBlock() instanceof LimitedBarrelBlock limitedBarrel)) {
 			return InteractionResult.PASS;
 		}
-		if (limitedBarrel.tryToTakeItem(state, level, pos, player)) {
-			return InteractionResult.SUCCESS;
+		if (direction != limitedBarrel.getFacing(state)) {
+			return InteractionResult.PASS; // sides/top/back keep vanilla Creative instant-break
 		}
-		return InteractionResult.PASS;
+		if (!level.isClientSide()) {
+			limitedBarrel.tryToTakeItem(state, level, pos, player);
+		}
+		// Always cancel on the front face so Creative never breaks the barrel, even when nothing could be taken.
+		return InteractionResult.CONSUME;
 	}
 
 	private InteractionResult onSneakItemBlockInteraction(Player player, Level level, InteractionHand hand, BlockHitResult hitResult) {

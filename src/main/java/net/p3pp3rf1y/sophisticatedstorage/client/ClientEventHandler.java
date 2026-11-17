@@ -207,7 +207,12 @@ public class ClientEventHandler {
 		}
 		if (limitedBarrel.isLookingAtFront(player, pos, state)) {
 			if (player.isCreative()) {
-				return InteractionResult.FAIL;
+				// CONSUME (not FAIL): Fabric only sends START_DESTROY_BLOCK to the server when the result consumes the action,
+				// and the server-side AttackBlockCallback performs the single extraction. No hand swing, block isn't broken.
+				if (Minecraft.getInstance().gameMode != null) {
+					Minecraft.getInstance().gameMode.destroyDelay = 5;
+				}
+				return InteractionResult.CONSUME;
 			} else if (player.getDestroySpeed(state) < 2 && Minecraft.getInstance().gameMode != null) {
 				Minecraft.getInstance().gameMode.destroyDelay = 5;
 			}
