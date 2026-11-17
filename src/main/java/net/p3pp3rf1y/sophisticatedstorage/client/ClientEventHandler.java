@@ -109,6 +109,11 @@ public class ClientEventHandler {
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> ClientPacketDistributor.sendToServer(new RequestPlayerSettingsPayload()));
 		ClientTickEvents.START_CLIENT_TICK.register(client -> ControllerTargetHighlighter.highlightTargets());
 		AttackBlockCallback.EVENT.register(ClientEventHandler::onLimitedBarrelClicked);
+		ClientTickEvents.START_CLIENT_TICK.register(client -> {
+			if (!client.options.keyAttack.isDown()) {
+				creativeExtractionSentForPress = false;
+			}
+		});
 		LevelRenderEvents.BEFORE_BLOCK_OUTLINE.register(ClientEventHandler::onBeforeBlockOutline);
 	}
 
@@ -196,6 +201,10 @@ public class ClientEventHandler {
 		return true;
 	}
 
+	// Creative: MultiPlayerGameMode#continueDestroyBlock re-fires AttackBlockCallback every 5 ticks while attack is held,
+	// so extraction must be edge-triggered (once per physical press). Reset when the attack key is released.
+	private static boolean creativeExtractionSentForPress = false;
+
 	private static InteractionResult onLimitedBarrelClicked(Player player, Level level, InteractionHand hand, BlockPos pos, Direction direction) {
 		if (!level.isClientSide()) {
 			return InteractionResult.PASS;
@@ -212,6 +221,10 @@ public class ClientEventHandler {
 				if (Minecraft.getInstance().gameMode != null) {
 					Minecraft.getInstance().gameMode.destroyDelay = 5;
 				}
+				if (creativeExtractionSentForPress) {
+					return InteractionResult.FAIL; // held-button repeat: swallow without notifying the server
+				}
+				creativeExtractionSentForPress = true;
 				return InteractionResult.CONSUME;
 			} else if (player.getDestroySpeed(state) < 2 && Minecraft.getInstance().gameMode != null) {
 				Minecraft.getInstance().gameMode.destroyDelay = 5;
