@@ -14,6 +14,7 @@
     "client.ClientLevelMixin",
     "client.GuiMixin",
     "client.ModelDiscoveryMixin",
+    "client.MultiPlayerGameModeMixin",
     "client.MouseHandlerMixin"
   ],
   "injectors": {
