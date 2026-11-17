@@ -63,7 +63,9 @@ public class CommonEventHandler {
 	}
 
 	private InteractionResult onLimitedBarrelLeftClicked(Player player, Level level, InteractionHand hand, BlockPos pos, Direction direction) {
-		if (!player.isCreative()) {
+		// Server only: the client side is decided by ClientEventHandler (first non-PASS result wins, so answering here
+		// on the client would pre-empt it and send a START_DESTROY_BLOCK packet on every held tick).
+		if (level.isClientSide() || !player.isCreative()) {
 			return InteractionResult.PASS;
 		}
 
@@ -74,9 +76,7 @@ public class CommonEventHandler {
 		if (direction != limitedBarrel.getFacing(state)) {
 			return InteractionResult.PASS; // sides/top/back keep vanilla Creative instant-break
 		}
-		if (!level.isClientSide()) {
-			limitedBarrel.tryToTakeItem(state, level, pos, player);
-		}
+		limitedBarrel.tryToTakeItem(state, level, pos, player);
 		// Always cancel on the front face so Creative never breaks the barrel, even when nothing could be taken.
 		return InteractionResult.CONSUME;
 	}
